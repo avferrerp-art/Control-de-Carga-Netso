@@ -1,0 +1,15 @@
+# Proxy de Netlify hacia la hoja publicada de Google Sheets.
+#
+# Por que existe este archivo:
+# El navegador bloquea (CORS) que una pagina pida datos a otro dominio.
+# Con el codigo 200 al final, Netlify NO redirige al usuario: va el mismo
+# a buscar el contenido a Google y lo entrega como si fuera propio. Para el
+# navegador todo viene del mismo sitio, asi que no hay CORS y nunca se bloquea.
+#
+# IMPORTANTE: si vuelves a publicar la hoja, Google genera un ID 2PACX nuevo.
+# Hay que actualizarlo en las dos lineas de abajo Y en la constante PUB_ID
+# del index.html.
+
+/gs-html  https://docs.google.com/spreadsheets/d/e/2PACX-1vTs9SHDjBC5-S3uhxlOqSe_1to8A1Tt8kO0GjPP0hkIQ_0zaCEklCMnRb_tjiTxj7w9hRqx7DfZjk9A/pubhtml/sheet?headers=false&gid=0  200
+
+/gs-csv   https://docs.google.com/spreadsheets/d/e/2PACX-1vTs9SHDjBC5-S3uhxlOqSe_1to8A1Tt8kO0GjPP0hkIQ_0zaCEklCMnRb_tjiTxj7w9hRqx7DfZjk9A/pub?gid=0&single=true&output=csv  200
