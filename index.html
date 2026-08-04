@@ -42,7 +42,7 @@
   .drive-link .arrow{opacity:.6;font-weight:700;font-size:11px}
   hr.div{border:none;border-top:1px solid var(--line);margin:22px 0}
   /* KPI cards */
-  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:18px}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
   .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;border-top:4px solid var(--line);box-shadow:0 1px 2px rgba(15,23,42,.04)}
   .kpi .label{color:var(--muted);font-size:13.5px;font-weight:600;margin-bottom:10px}
   .kpi .num{font-size:38px;font-weight:800;line-height:1}
@@ -190,8 +190,6 @@
     <div class="kpi activas"><div class="label">Cargas activas</div><div class="num" id="kActivas">0</div><div class="foot">No recibidas aún</div></div>
     <div class="kpi transito"><div class="label">En tránsito</div><div class="num" id="kTransito">0</div><div class="foot" id="kTransitoFoot">—</div></div>
     <div class="kpi incomp"><div class="label">Expedientes incompletos</div><div class="num" id="kIncomp">0</div><div class="foot" id="kIncompFoot">—</div></div>
-    <div class="kpi valor"><div class="label">Valor en tránsito</div><div class="num money" id="kValor">$0</div><div class="foot">Mercancía aún no recibida</div></div>
-    <div class="kpi pagar"><div class="label">Por pagar</div><div class="num money" id="kPagar">$0</div><div class="foot" id="kPagarFoot">—</div></div>
   </div>
 
   <!-- PIPELINE -->
@@ -228,13 +226,13 @@
       <div class="chart-box"><canvas id="chartEstado"></canvas></div>
     </div>
     <div class="panel">
-      <h3>Compras por proveedor</h3>
-      <p class="p-sub">Top 10 por monto total en USD</p>
+      <h3>Cargas por proveedor</h3>
+      <p class="p-sub">Top 10 por cantidad de cargas</p>
       <div class="chart-box"><canvas id="chartProv"></canvas></div>
     </div>
     <div class="panel">
       <h3>Evolución mensual</h3>
-      <p class="p-sub">Monto total comprado por mes (según Fecha PI/INV)</p>
+      <p class="p-sub">Cantidad de cargas por mes (según Fecha PI/INV)</p>
       <div class="chart-box"><canvas id="chartMes"></canvas></div>
     </div>
     <div class="panel">
@@ -260,10 +258,9 @@
       <table>
         <thead><tr>
           <th>#</th><th>Proveedor</th><th>PI No</th><th>Productos</th>
-          <th>Ruta documental</th><th>Estado</th><th>Contenedor</th>
-          <th style="text-align:right">Total</th><th style="text-align:right">Por pagar</th>
+          <th>Ruta documental</th><th>Estado</th><th>Contenedor</th><th>Agente aduanal</th>
         </tr></thead>
-        <tbody id="tbody"><tr><td colspan="9" class="msg">Cargando datos…</td></tr></tbody>
+        <tbody id="tbody"><tr><td colspan="8" class="msg">Cargando datos…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -360,33 +357,6 @@ let charts = {estado:null, prov:null, mes:null, pipe:null};
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
 function isUrl(v){ return /^https?:\/\//i.test(String(v||"").trim()); }
-
-/* Montos: la hoja usa formato "$5.739,00" (punto = miles, coma = decimales) */
-function money(v){
-  if(v==null) return 0;
-  if(typeof v==="number") return isFinite(v)?v:0;
-  let s=String(v).trim();
-  if(!s) return 0;
-  const neg=/^\(.*\)$/.test(s)||s.startsWith("-");
-  s=s.replace(/[^0-9.,]/g,"");
-  if(!s) return 0;
-  const lastC=s.lastIndexOf(","), lastD=s.lastIndexOf(".");
-  if(lastC>lastD)      s=s.replace(/\./g,"").replace(",",".");
-  else if(lastD>lastC) s=s.replace(/,/g,"");
-  else                 s=s.replace(/[.,]/g,"");
-  const n=parseFloat(s);
-  if(!isFinite(n)) return 0;
-  return neg?-Math.abs(n):n;
-}
-function fmtUSD(n){
-  const a=Math.abs(n);
-  if(a>=1e6) return "$"+(n/1e6).toFixed(2)+"M";
-  if(a>=1e3) return "$"+Math.round(n/1e3)+"K";
-  return "$"+Math.round(n);
-}
-function fmtUSDFull(n){
-  return "$"+n.toLocaleString("es-VE",{minimumFractionDigits:2,maximumFractionDigits:2});
-}
 
 /* Fechas dd/mm/yyyy + seriales de Excel. Descarta el 31/10/1899 (celda vacía leída como fecha cero). */
 function pdate(v){
@@ -534,12 +504,6 @@ function normalize(matrix, links){
     cont:   find(["Container ID","Contenedor","Container"]),
     agente: find(["Agente aduanal","Agente Aduanal","Agente"]),
     prod:   find(["Productos en Camino","Productos","Producto"]),
-    sub:    find(["Subtotal","Sub Total"]),
-    flete:  find(["Flete"]),
-    total:  find(["Total"]),
-    antpct: find(["Anticipo (%)","Anticipo %","Anticipo"]),
-    antot:  find(["Total Anticipo"]),
-    pagar:  find(["Por Pagar","Por pagar"]),
     dn:     find(["DN"]),
   };
   // Índices por etapa
@@ -556,7 +520,7 @@ function normalize(matrix, links){
   });
 
   const out=[];
-  const alerts={n1899:0, sinEstado:0, sinPI:0, trailing:new Set(), sinMonto:0};
+  const alerts={n1899:0, sinEstado:0, sinPI:0, trailing:new Set()};
   let linkCount=0;
 
   for(let i=hIdx+1;i<matrix.length;i++){
@@ -601,10 +565,6 @@ function normalize(matrix, links){
 
     if(!stages.pi.has) alerts.sinPI++;
 
-    const total=money(get(r,col.total));
-    const sub=money(get(r,col.sub));
-    if(!total && !sub) alerts.sinMonto++;
-
     const row={
       i: out.length+1,
       fecha:  pdate(get(r,col.fecha)),
@@ -616,10 +576,6 @@ function normalize(matrix, links){
       contUrl:getLink(col.cont),        // tracking de contenedor (searates) si está enlazado
       agente: get(r,col.agente),
       prod:   get(r,col.prod),
-      sub, flete: money(get(r,col.flete)), total,
-      antpct: get(r,col.antpct),
-      antot:  money(get(r,col.antot)),
-      pagar:  money(get(r,col.pagar)),
       dn:     get(r,col.dn),
       stages,
     };
@@ -635,7 +591,6 @@ function normalize(matrix, links){
   if(alerts.n1899)      DATA_ALERTS.push(`<b>${alerts.n1899}</b> celdas de fecha con el valor <b>31/10/1899</b> — es una celda vacía leída como fecha cero. Bórralas para que no ensucien los cálculos.`);
   if(alerts.sinEstado)  DATA_ALERTS.push(`<b>${alerts.sinEstado}</b> cargas sin <b>Status</b>. Aparecen en rojo porque no se puede saber qué documentos deberían tener.`);
   if(alerts.sinPI)      DATA_ALERTS.push(`<b>${alerts.sinPI}</b> cargas sin número de <b>PI</b>.`);
-  if(alerts.sinMonto)   DATA_ALERTS.push(`<b>${alerts.sinMonto}</b> cargas sin <b>Subtotal ni Total</b>. No suman a los KPIs de dinero.`);
   if(alerts.trailing.size) DATA_ALERTS.push(`Valores con espacios sobrantes que se cuentan como categorías distintas: ${[...alerts.trailing].slice(0,4).map(esc).join(", ")}. Pon <b>validación de datos</b> en esas columnas.`);
   const sinEtapa = STAGES.filter(st=>!STAGE_AVAILABLE.has(st.key));
   if(sinEtapa.length) DATA_ALERTS.push(`La hoja no tiene ninguna columna para la etapa <b>${sinEtapa.map(s=>s.name).join(", ")}</b>. Esa etapa aparece atenuada y <b>no</b> cuenta como documento faltante. Para activarla agrega la columna <b>${sinEtapa.map(s=>s.numCols[0]||s.dateCols[0]).join(", ")}</b>.`);
@@ -749,12 +704,6 @@ function detailHTML(r){
         : esc(r.cont))}
       ${kv("Agente aduanal",esc(r.agente))}
       ${kv("DN",esc(r.dn))}
-      ${kv("Subtotal",r.sub?fmtUSDFull(r.sub):"—")}
-      ${kv("Flete",r.flete?fmtUSDFull(r.flete):"—")}
-      ${kv("Total",r.total?fmtUSDFull(r.total):"—")}
-      ${kv("Anticipo",esc(r.antpct))}
-      ${kv("Total anticipo",r.antot?fmtUSDFull(r.antot):"—")}
-      ${kv("Por pagar",r.pagar?fmtUSDFull(r.pagar):"—")}
       ${kv("Productos",esc(r.prod))}
     </div>
   </div>`;
@@ -765,8 +714,6 @@ function renderKPIs(rows){
   const activas=rows.filter(r=>r.estado!=="recibido").length;
   const transito=rows.filter(r=>r.estado==="camino"||r.estado==="nacion").length;
   const incomp=rows.filter(r=>r.missing.length>0).length;
-  const valorTransito=rows.filter(r=>r.estado!=="recibido").reduce((a,r)=>a+r.total,0);
-  const pagar=rows.reduce((a,r)=>a+r.pagar,0);
   const recibidas=rows.filter(r=>r.estado==="recibido").length;
 
   document.getElementById("kTotal").textContent=total;
@@ -776,9 +723,6 @@ function renderKPIs(rows){
   document.getElementById("kTransitoFoot").textContent="En camino + nacionalización";
   document.getElementById("kIncomp").textContent=incomp;
   document.getElementById("kIncompFoot").textContent= total?`${Math.round(incomp/total*100)}% de las cargas`:"—";
-  document.getElementById("kValor").textContent=fmtUSD(valorTransito);
-  document.getElementById("kPagar").textContent=fmtUSD(pagar);
-  document.getElementById("kPagarFoot").textContent=`${rows.filter(r=>r.pagar>0).length} cargas con saldo`;
 }
 
 function renderPipe(rows){
@@ -821,33 +765,33 @@ function renderCharts(rows){
     options:{responsive:true,maintainAspectRatio:false,cutout:"62%",plugins:{legend:{position:"bottom"}}}
   });
 
-  // 2. Proveedores
+  // 2. Proveedores (cantidad de cargas)
   const byProv={};
-  rows.forEach(r=>{ if(r.prov) byProv[r.prov]=(byProv[r.prov]||0)+r.total; });
-  const top=Object.entries(byProv).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  rows.forEach(r=>{ if(r.prov) byProv[r.prov]=(byProv[r.prov]||0)+1; });
+  const top=Object.entries(byProv).sort((a,b)=>b[1]-a[1]).slice(0,10);
   if(charts.prov) charts.prov.destroy();
   charts.prov=new Chart(document.getElementById("chartProv"),{
     type:"bar",
-    data:{labels:top.map(e=>e[0]),datasets:[{label:"USD",data:top.map(e=>e[1]),backgroundColor:"#2563eb",borderRadius:6}]},
+    data:{labels:top.map(e=>e[0]),datasets:[{label:"Cargas",data:top.map(e=>e[1]),backgroundColor:"#2563eb",borderRadius:6}]},
     options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmtUSDFull(c.raw)}}},
-      scales:{x:{ticks:{callback:v=>fmtUSD(v)}}}}
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{precision:0}}}}
   });
 
-  // 3. Evolución mensual
+  // 3. Evolución mensual (cantidad de cargas)
   const byMes={};
-  rows.forEach(r=>{ if(r.fecha && r.total){
+  rows.forEach(r=>{ if(r.fecha){
     const k=r.fecha.getFullYear()+"-"+String(r.fecha.getMonth()+1).padStart(2,"0");
-    byMes[k]=(byMes[k]||0)+r.total;
+    byMes[k]=(byMes[k]||0)+1;
   }});
   const meses=Object.keys(byMes).sort();
   if(charts.mes) charts.mes.destroy();
   charts.mes=new Chart(document.getElementById("chartMes"),{
     type:"bar",
-    data:{labels:meses,datasets:[{label:"USD",data:meses.map(m=>byMes[m]),backgroundColor:"#0d9488",borderRadius:5}]},
+    data:{labels:meses,datasets:[{label:"Cargas",data:meses.map(m=>byMes[m]),backgroundColor:"#0d9488",borderRadius:5}]},
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmtUSDFull(c.raw)}}},
-      scales:{y:{ticks:{callback:v=>fmtUSD(v)}}}}
+      plugins:{legend:{display:false}},
+      scales:{y:{ticks:{precision:0}}}}
   });
 
   // 4. Completitud
@@ -868,7 +812,7 @@ function renderCharts(rows){
 function renderTable(rows){
   document.getElementById("tCount").textContent=rows.length;
   const tb=document.getElementById("tbody");
-  if(!rows.length){ tb.innerHTML=`<tr><td colspan="9" class="msg">Sin cargas que coincidan con los filtros.</td></tr>`; return; }
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="8" class="msg">Sin cargas que coincidan con los filtros.</td></tr>`; return; }
   tb.innerHTML=rows.map(r=>{
     const open=OPEN_ROW===r.i;
     const main=`<tr class="row" data-i="${r.i}">
@@ -881,10 +825,9 @@ function renderTable(rows){
       <td>${r.contUrl
         ? `<a href="${esc(r.contUrl)}" target="_blank" rel="noopener" title="Rastrear contenedor" onclick="event.stopPropagation()" style="color:var(--blue);font-weight:600;text-decoration:none">${esc(r.cont)} ↗</a>`
         : (esc(r.cont)||"—")}</td>
-      <td class="num">${r.total?fmtUSDFull(r.total):"—"}</td>
-      <td class="num">${r.pagar?fmtUSDFull(r.pagar):"—"}</td>
+      <td>${esc(r.agente)||"—"}</td>
     </tr>`;
-    const det=open?`<tr class="detail"><td colspan="9">${detailHTML(r)}</td></tr>`:"";
+    const det=open?`<tr class="detail"><td colspan="8">${detailHTML(r)}</td></tr>`:"";
     return main+det;
   }).join("");
   tb.querySelectorAll("tr.row").forEach(tr=>{
