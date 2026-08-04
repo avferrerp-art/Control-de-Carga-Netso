@@ -74,6 +74,11 @@
   .pipe-cell .pm{font-size:11.5px;color:var(--muted)}
   .pipe-cell .bar{height:5px;border-radius:99px;background:#e2e8f0;margin-top:9px;overflow:hidden}
   .pipe-cell .bar i{display:block;height:100%;background:var(--green);border-radius:99px}
+  /* ETD/ETA: hitos de fecha, no documentos — barra azul para diferenciarlos */
+  .pipe-cell.fecha .bar i{background:#93c5fd}
+  .pipe-cell.fecha .pv{color:var(--muted)}
+  .tagf{display:inline-block;background:#e0e7ff;color:#3730a3;border-radius:4px;
+    padding:1px 5px;font-size:9px;letter-spacing:.2px;margin-left:4px;vertical-align:1px}
   /* Charts */
   .charts{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
   .chart-box{position:relative;height:300px}
@@ -110,6 +115,8 @@
   .legend > span{display:inline-flex;align-items:center;gap:7px}
   .step.late{background:#fee2e2;border-color:#fecaca;color:#991b1b}
   .step.na{background:repeating-linear-gradient(45deg,#fff,#fff 3px,#f1f5f9 3px,#f1f5f9 6px);border-style:dashed;color:#cbd5e1}
+  /* Hitos de fecha (ETD/ETA): índigo, para que no se confundan con documentos */
+  .step.date.ok{background:#e0e7ff;border-color:#c7d2fe;color:#3730a3}
   .flag{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:middle}
   .flag.g{background:var(--green)}.flag.a{background:var(--amber)}.flag.r{background:var(--red)}
   /* Detalle expandible */
@@ -190,7 +197,8 @@
   <!-- PIPELINE -->
   <div class="panel" style="margin-top:18px">
     <h3>Pipeline documental</h3>
-    <p class="p-sub">Cargas que ya tienen cada etapa. Haz clic en una etapa para filtrar las que <b>todavía no la tienen</b>.</p>
+    <p class="p-sub">Cargas que ya tienen cada etapa. Haz clic en una etapa para filtrar las que <b>todavía no la tienen</b>.
+      ETD y ETA son fechas de la naviera, no documentos: se cuentan, pero nunca se marcan como faltantes.</p>
     <div class="pipe" id="pipe"></div>
   </div>
 
@@ -231,7 +239,7 @@
     </div>
     <div class="panel">
       <h3>Completitud del expediente</h3>
-      <p class="p-sub">Documentos presentes vs. faltantes en cada etapa</p>
+      <p class="p-sub">Etapas registradas vs. sin registrar en cada carga</p>
       <div class="chart-box"><canvas id="chartPipe"></canvas></div>
     </div>
   </div>
@@ -245,6 +253,7 @@
       <span><span class="step ok">INV</span> registrado, sin link en la celda</span>
       <span><span class="step">INV</span> pendiente</span>
       <span><span class="step late">INV</span> falta y ya debería estar</span>
+      <span><span class="step ok date">ETD</span> fecha de la naviera — no es documento, nunca marca falta</span>
       <span><span class="step na">RFQ</span> columna no creada en la hoja</span>
     </div>
     <div style="overflow-x:auto">
@@ -314,17 +323,21 @@ const STAGES = [
   {key:"eta", short:"ETA", name:"ETA (arribo)", doc:false, numCols:[],                                                 urlCols:[],                                                        dateCols:["ETA"]},
 ];
 
-/* Qué etapas ya deberían existir según el estado logístico.
+/* Qué DOCUMENTOS ya deberían existir según el estado logístico.
    Esto es lo que convierte el semáforo en algo útil: un BL faltante
-   solo es problema si la carga ya zarpó. */
+   solo es problema si la carga ya zarpó.
+   ETD y ETA quedan fuera a propósito: son fechas que informa la naviera,
+   no documentos que alguien tenga que conseguir, así que nunca se marcan
+   como faltantes ni pintan rojo. */
 const REQUIRED = {
   produccion: ["rfq","pi"],
-  camino:     ["rfq","pi","inv","pl","etd","bl"],
-  nacion:     ["rfq","pi","inv","pl","etd","bl","eta"],
-  recibido:   ["rfq","pi","inv","pl","etd","bl","eta"],
+  camino:     ["rfq","pi","inv","pl","bl"],
+  nacion:     ["rfq","pi","inv","pl","bl"],
+  recibido:   ["rfq","pi","inv","pl","bl"],
   indef:      [],
   na:         [],
 };
+const IS_DOC = k => { const s=STAGES.find(x=>x.key===k); return !!(s&&s.doc); };
 const ESTADO_LABEL = {
   produccion:"En producción", camino:"En camino", nacion:"Proc. Nacionalización",
   recibido:"Recibido", indef:"Indefinido", na:"Sin estado",
@@ -610,7 +623,8 @@ function normalize(matrix, links){
       dn:     get(r,col.dn),
       stages,
     };
-    row.missing = REQUIRED[row.estado].filter(k=>STAGE_AVAILABLE.has(k) && !stages[k].has);
+    // solo documentos: ETD/ETA nunca cuentan como faltante
+    row.missing = REQUIRED[row.estado].filter(k=>IS_DOC(k) && STAGE_AVAILABLE.has(k) && !stages[k].has);
     row.sem = row.estado==="indef"||row.estado==="na" ? "r"
             : row.missing.length===0 ? "g"
             : row.missing.length===1 ? "a" : "r";
@@ -697,9 +711,10 @@ function trackHTML(r){
     const s=r.stages[st.key];
     const na=!STAGE_AVAILABLE.has(st.key);
     const late=r.missing.includes(st.key);
-    const cls="step"+(s.has?" ok":"")+(s.url?" lnk":"")+(late?" late":"")+(na?" na":"");
+    const cls="step"+(s.has?" ok":"")+(s.url?" lnk":"")+(late?" late":"")+(na?" na":"")+(st.doc?"":" date");
     const title=na ? `${st.name}: la hoja no tiene esta columna todavía`
-                   : `${st.name}: ${s.label||fmtDate(s.date)||"pendiente"}`;
+      : st.doc ? `${st.name}: ${s.label||"pendiente"}`
+               : `${st.name}: ${s.date?fmtDate(s.date):"sin fecha cargada"} (fecha, no documento)`;
     if(s.url) return `<a class="${cls}" href="${esc(s.url)}" target="_blank" rel="noopener" title="${esc(title)}" onclick="event.stopPropagation()">${st.short}</a>`;
     return `<span class="${cls}" title="${esc(title)}">${st.short}</span>`;
   }).join("")+`</div>`;
@@ -778,10 +793,12 @@ function renderPipe(rows){
     const have=rows.filter(r=>r.stages[st.key].has).length;
     const pct=Math.round(have/n*100);
     const on=PIPE_FILTER===st.key?" on":"";
-    return `<div class="pipe-cell${on}" data-k="${st.key}">
-      <div class="pn">${st.short}</div>
+    // ETD/ETA son hitos de fecha: se cuentan, pero no se leen como "faltantes"
+    const fecha=!st.doc;
+    return `<div class="pipe-cell${on}${fecha?" fecha":""}" data-k="${st.key}">
+      <div class="pn">${st.short}${fecha?' <span class="tagf">fecha</span>':""}</div>
       <div class="pv">${have}</div>
-      <div class="pm">de ${rows.length} · faltan ${rows.length-have}</div>
+      <div class="pm">${fecha?`de ${rows.length} con fecha cargada`:`de ${rows.length} · faltan ${rows.length-have}`}</div>
       <div class="bar"><i style="width:${pct}%"></i></div>
     </div>`;
   }).join("");
@@ -839,8 +856,8 @@ function renderCharts(rows){
   charts.pipe=new Chart(document.getElementById("chartPipe"),{
     type:"bar",
     data:{labels:STAGES.map(s=>s.short),datasets:[
-      {label:"Con documento",data:have,backgroundColor:"#16a34a",borderRadius:5},
-      {label:"Faltante",data:have.map(h=>rows.length-h),backgroundColor:"#e2e8f0",borderRadius:5},
+      {label:"Registrado",data:have,backgroundColor:"#16a34a",borderRadius:5},
+      {label:"Sin registrar",data:have.map(h=>rows.length-h),backgroundColor:"#e2e8f0",borderRadius:5},
     ]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{position:"bottom"}},
