@@ -207,12 +207,6 @@
       <div class="fld"><label>Estado</label><select id="fEstado"><option value="">Todos</option></select></div>
       <div class="fld"><label>Proveedor</label><select id="fProv"><option value="">Todos</option></select></div>
       <div class="fld"><label>Agente aduanal</label><select id="fAgente"><option value="">Todos</option></select></div>
-      <div class="fld"><label>Semáforo</label><select id="fSem">
-        <option value="">Todos</option>
-        <option value="r">Solo rojos</option>
-        <option value="ra">Rojos y ámbar</option>
-        <option value="g">Solo verdes</option>
-      </select></div>
       <div class="fld grow"><label>Buscar (PI, invoice, BL, contenedor, producto)</label><input type="text" id="fSearch" placeholder="Escribe para filtrar…" /></div>
       <span class="clear" id="clearFilters">Limpiar filtros</span>
     </div>
@@ -633,7 +627,6 @@ function filters(){
     estado: document.getElementById("fEstado").value,
     prov:   document.getElementById("fProv").value,
     agente: document.getElementById("fAgente").value,
-    sem:    document.getElementById("fSem").value,
     q:      document.getElementById("fSearch").value.trim().toLowerCase(),
   };
 }
@@ -643,9 +636,6 @@ function applyFilters(rows){
     if(f.estado && r.estado!==f.estado) return false;
     if(f.prov   && r.prov!==f.prov)     return false;
     if(f.agente && r.agente!==f.agente) return false;
-    if(f.sem==="r"  && r.sem!=="r")     return false;
-    if(f.sem==="ra" && r.sem==="g")     return false;
-    if(f.sem==="g"  && r.sem!=="g")     return false;
     if(PIPE_FILTER && r.stages[PIPE_FILTER].has) return false;
     if(f.q){
       const hay=[r.prov,r.cont,r.prod,r.naviera,r.agente,r.estadoRaw,
@@ -860,6 +850,7 @@ function renderAlerts(){
 }
 
 function renderAll(){
+  refreshOptions();          // ← faltaba: sin esto los desplegables quedan vacíos
   renderKPIs(ROWS);
   renderPipe(ROWS);
   renderCharts(ROWS);
@@ -1005,10 +996,10 @@ document.getElementById("alertsToggle").onclick=()=>{
 document.getElementById("btnReload").onclick=loadLive;
 document.getElementById("btnUpload").onclick=()=>document.getElementById("fileInput").click();
 document.getElementById("fileInput").onchange=e=>{ if(e.target.files[0]) loadFile(e.target.files[0]); };
-["fEstado","fProv","fAgente","fSem"].forEach(id=>document.getElementById(id).onchange=()=>{OPEN_ROW=null;renderAll();});
+["fEstado","fProv","fAgente"].forEach(id=>document.getElementById(id).onchange=()=>{OPEN_ROW=null;renderAll();});
 document.getElementById("fSearch").oninput=()=>{OPEN_ROW=null;renderTable(applyFilters(ROWS));};
 document.getElementById("clearFilters").onclick=()=>{
-  ["fEstado","fProv","fAgente","fSem"].forEach(id=>document.getElementById(id).value="");
+  ["fEstado","fProv","fAgente"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("fSearch").value="";
   PIPE_FILTER=null; OPEN_ROW=null; renderAll();
 };
