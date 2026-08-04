@@ -251,10 +251,10 @@
     <div style="overflow-x:auto">
       <table>
         <thead><tr>
-          <th>#</th><th>Proveedor</th><th>PI No</th><th>Productos</th>
+          <th>#</th><th>Proveedor</th><th>PI No</th>
           <th>Ruta documental</th><th>Estado</th><th>Contenedor</th><th>Agente aduanal</th>
         </tr></thead>
-        <tbody id="tbody"><tr><td colspan="8" class="msg">Cargando datos…</td></tr></tbody>
+        <tbody id="tbody"><tr><td colspan="7" class="msg">Cargando datos…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -802,14 +802,13 @@ function renderCharts(rows){
 function renderTable(rows){
   document.getElementById("tCount").textContent=rows.length;
   const tb=document.getElementById("tbody");
-  if(!rows.length){ tb.innerHTML=`<tr><td colspan="8" class="msg">Sin cargas que coincidan con los filtros.</td></tr>`; return; }
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="7" class="msg">Sin cargas que coincidan con los filtros.</td></tr>`; return; }
   tb.innerHTML=rows.map(r=>{
     const open=OPEN_ROW===r.i;
     const main=`<tr class="row" data-i="${r.i}">
       <td><span class="flag ${r.sem}"></span>${r.i}</td>
       <td class="id">${esc(r.prov)||"—"}</td>
       <td>${esc(r.stages.pi.label)||"—"}</td>
-      <td style="max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.prod)}">${esc(r.prod)||"—"}</td>
       <td>${trackHTML(r)}</td>
       <td>${stateTag(r)}</td>
       <td>${r.contUrl
@@ -817,7 +816,7 @@ function renderTable(rows){
         : (esc(r.cont)||"—")}</td>
       <td>${esc(r.agente)||"—"}</td>
     </tr>`;
-    const det=open?`<tr class="detail"><td colspan="8">${detailHTML(r)}</td></tr>`:"";
+    const det=open?`<tr class="detail"><td colspan="7">${detailHTML(r)}</td></tr>`:"";
     return main+det;
   }).join("");
   tb.querySelectorAll("tr.row").forEach(tr=>{
