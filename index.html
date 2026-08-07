@@ -206,7 +206,7 @@
       <div class="fld"><label>Estado</label><select id="fEstado"><option value="">Todos</option></select></div>
       <div class="fld"><label>Proveedor</label><select id="fProv"><option value="">Todos</option></select></div>
       <div class="fld"><label>Agente aduanal</label><select id="fAgente"><option value="">Todos</option></select></div>
-      <div class="fld grow"><label>Buscar (PI, invoice, BL, contenedor, producto)</label><input type="text" id="fSearch" placeholder="Escribe para filtrar…" /></div>
+      <div class="fld grow"><label>Buscar (proveedor, PI, invoice, BL, contenedor)</label><input type="text" id="fSearch" placeholder="Escribe para filtrar…" /></div>
       <span class="clear" id="clearFilters">Limpiar filtros</span>
     </div>
   </div>
@@ -318,11 +318,16 @@ const STAGES = [
    ETD y ETA quedan fuera a propósito: son fechas que informa la naviera,
    no documentos que alguien tenga que conseguir, así que nunca se marcan
    como faltantes ni pintan rojo. */
+/* El RFQ queda fuera a propósito. Existe como columna y se muestra en el
+   recorrido, pero no cuenta como faltante: las 85 cargas históricas nunca
+   tuvieron RFQ y exigirlo retroactivamente pintaría todo de rojo sin que eso
+   signifique nada. Cuando el RFQ sea parte real del proceso, basta con
+   agregar "rfq" a las cuatro listas de abajo. */
 const REQUIRED = {
-  produccion: ["rfq","pi"],
-  camino:     ["rfq","pi","inv","pl","bl"],
-  nacion:     ["rfq","pi","inv","pl","bl"],
-  recibido:   ["rfq","pi","inv","pl","bl"],
+  produccion: ["pi"],
+  camino:     ["pi","inv","pl","bl"],
+  nacion:     ["pi","inv","pl","bl"],
+  recibido:   ["pi","inv","pl","bl"],
   indef:      [],
   na:         [],
 };
@@ -496,11 +501,9 @@ function normalize(matrix, links){
     fecha:  find(["Fecha PI/INV","Fecha PI","Fecha"]),
     status: find(["Status","Estado"]),
     prov:   find(["Supplier","Proveedor"]),
-    naviera:find(["Naviera"]),
     cont:   find(["Container ID","Contenedor","Container"]),
     agente: find(["Agente aduanal","Agente Aduanal","Agente"]),
-    prod:   find(["Productos en Camino","Productos","Producto"]),
-    dn:     find(["DN"]),
+    id:     find(["ID"]),
   };
   // Índices por etapa
   const sIdx={};
@@ -567,12 +570,10 @@ function normalize(matrix, links){
       estado: est,
       estadoRaw: rawStatus.trim(),
       prov:   prov.replace(/\s+/g," ").trim(),
-      naviera:get(r,col.naviera),
       cont:   get(r,col.cont),
       contUrl:getLink(col.cont),        // tracking de contenedor (searates) si está enlazado
       agente: get(r,col.agente),
-      prod:   get(r,col.prod),
-      dn:     get(r,col.dn),
+      id:     get(r,col.id),   // identificador estable de la Fase 0
       stages,
     };
     // solo documentos: ETD/ETA nunca cuentan como faltante
@@ -640,7 +641,7 @@ function applyFilters(rows){
     if(f.agente && r.agente!==f.agente) return false;
     if(PIPE_FILTER && r.stages[PIPE_FILTER].has) return false;
     if(f.q){
-      const hay=[r.prov,r.cont,r.prod,r.naviera,r.agente,r.estadoRaw,
+      const hay=[r.prov,r.cont,r.agente,r.estadoRaw,r.id,
         ...STAGES.map(s=>r.stages[s.key].label)].join(" ").toLowerCase();
       if(!hay.includes(f.q)) return false;
     }
@@ -691,13 +692,10 @@ function detailHTML(r){
       ${kv("Fecha PI/INV",fmtDate(r.fecha))}
       ${kv("ETD (zarpe)",fmtDate(r.stages.etd.date))}
       ${kv("ETA (arribo)",fmtDate(r.stages.eta.date))}
-      ${kv("Naviera",esc(r.naviera))}
       ${kv("Contenedor", r.contUrl
         ? `<a href="${esc(r.contUrl)}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">${esc(r.cont)} ↗</a>`
         : esc(r.cont))}
       ${kv("Agente aduanal",esc(r.agente))}
-      ${kv("DN",esc(r.dn))}
-      ${kv("Productos",esc(r.prod))}
     </div>
   </div>`;
 }
@@ -957,26 +955,26 @@ function loadFile(file){
 
 /* Muestra real de la hoja para poder evaluar el diseño sin publicarla */
 const DEMO=[
-["Fecha PI/INV","Status","Supplier","PI No","Link Invoice","Link Packing List","BL","Naviera","Container ID","Agente aduanal","ETD","ETA","Productos en Camino","Subtotal","Flete","Total","Anticipo (%)","Total Anticipo","Por Pagar","DN"],
-["24/09/2025","Recibido","Sumec","25MEXUS-C6507CF","SU806207CF-25_bg_inv","SU806207CF-25_pkg","MEDUOZ357262","MSC","MSBU7597539","Carzoma","14/11/2025","8/12/2025","FIBRA DROP, ASU, ADSS, T21, PLANA 4H","$298.484,00","","$298.484,00","19%","$55.697,11","$242.786,89",""],
-["21/11/2025","Recibido","Sunet","SNT202511068 PI","SNT202611068-1 Invoice & Packing list","","MEDUWG066196","MSC","BMOU6756281","Carzoma","29/11/2025","28/01/2026","ACCESORIOS","$77.336,00","","$77.336,00","30%","$23.200,80","$54.135,20",""],
-["11/12/2025","Recibido","Sumec","25MEXUS-C6670CF","SU806012CF-26","SU806012CF-26 PL","MEDUWK570721","","MSBU7789629","Carzoma","7/02/2026","23/04/2026","","$218.450,00","","$218.450,00","","$0,00","$218.450,00",""],
-["20/02/2026","Recibido","EPCOM","FTZ2066768","FTZ2066768","PLcot_FTZ2066768","FFCM-00772","","Por definir","Carzoma","","","","$123.024,08","","$123.024,08","","$0,00","$123.024,08",""],
-["15/05/2026","Proc. Nacionalizacion","Sunet","SNT202603015-3/03079-1","SNT202603015-3/03079-1","","MEDUYO837700","","CAIU4755769","Carzoma","","","","","","$0,00","","$0,00","$0,00",""],
-["25/05/2026","Proc. Nacionalizacion","Sunet","SNT202603034-2/03079-2","SNT202603034-2/03079-2","","MEDUXZ669128","","TGBU9811869","Carzoma","","","","","","$0,00","","$0,00","$0,00",""],
-["16/11/2025","Proc. Nacionalizacion","HTFuture","HPI-R036-25111601","","","","","","","","","","$28.454,36","","$28.454,36","20%","$5.690,87","$22.763,49",""],
-["22/01/2026","En camino ","Queenton","PI QTM260122PF","","","26040802","","Por definir","Carzoma","","","","$18.652,00","","$18.652,00","","$0,00","$18.652,00",""],
-["1/06/2026","En camino ","Sunet","SNT202606071","","","","","","","","","","","","$0,00","","$0,00","$0,00",""],
-["2/06/2026","En produccion","Sumec","26Mexus-C6273CF","","","MEDUY6848293","","MSGU5112278","Carzoma","","","","","","$0,00","","$0,00","$0,00",""],
-["16/04/2026","En produccion","Sunet","SNT202604038-1","","","","","Por definir","Carzoma","","","","","","$0,00","","$0,00","$0,00",""],
-["","En produccion","ZIKUN","ZT20260709","","","","","","","31/10/1899","","","","","$0,00","","$0,00","$0,00",""],
-["","En produccion","JILONG","04232026061701","","","","","","","","","","","","$0,00","","$0,00","$0,00",""],
-["","En produccion","WICHIT","723001","","","","","","","31/10/1899","","","","","$0,00","","$0,00","$0,00",""],
-["20/11/2025","Indefinido","Komshine/Tawa","83072025111801","","","","","Por definir","","","","","$20,00","","$20,00","","$0,00","$20,00",""],
-["24/02/2026","Indefinido","Komshine/Tawa","83102026022402","","","","","ENVIO POR DHL","","","","","$31.450,00","$4.123,00","$35.573,00","","$0,00","$35.573,00",""],
-["3/11/2025","Recibido","ZHENGZHOU WEUNION","ZHENGZHOU WEUNION","20251022WUNNIC001 invoice & packing list","","MEDUWG066196","","BMOU6756281","Carzoma","29/11/2025","28/01/2026","ACCESORIOS","$22.240,00","","$22.240,00","100%","$22.240,00","$0,00",""],
-["9/10/2025","Recibido","Sunet","SNT202510008 PI","SNT202510008 Invoice & Packing list","","MEDURC272503","","GAOU6746317","","24/11/2025","12/01/2026","ACCESORIOS FTTH","$63.905,00","","$63.905,00","","$0,00","$63.905,00",""],
-["5/05/2025","Recibido","Komshine/Tawa","83072025050501 - PI","","","BillOfLading-MEDUW4192573","","UETU6568880","","","","Fusionadoras FX39, Cleavers, Kits, OTDRs","$17.080,00","","$17.080,00","100%","$17.080,00","$0,00",""],
+["Fecha PI/INV", "Status", "Supplier", "PI No", "Link Invoice", "Link Packing List", "BL", "Container ID", "Agente aduanal", "ETD", "ETA", "Subtotal", "Flete", "Total", "Anticipo (%)", "Total Anticipo", "Por Pagar"],
+["24/09/2025", "Recibido", "Sumec", "25MEXUS-C6507CF", "SU806207CF-25_bg_inv", "SU806207CF-25_pkg", "MEDUOZ357262", "MSBU7597539", "Carzoma", "14/11/2025", "8/12/2025", "$298.484,00", "", "$298.484,00", "19%", "$55.697,11", "$242.786,89"],
+["21/11/2025", "Recibido", "Sunet", "SNT202511068 PI", "SNT202611068-1 Invoice & Packing list", "", "MEDUWG066196", "BMOU6756281", "Carzoma", "29/11/2025", "28/01/2026", "$77.336,00", "", "$77.336,00", "30%", "$23.200,80", "$54.135,20"],
+["11/12/2025", "Recibido", "Sumec", "25MEXUS-C6670CF", "SU806012CF-26", "SU806012CF-26 PL", "MEDUWK570721", "MSBU7789629", "Carzoma", "7/02/2026", "23/04/2026", "$218.450,00", "", "$218.450,00", "", "$0,00", "$218.450,00"],
+["20/02/2026", "Recibido", "EPCOM", "FTZ2066768", "FTZ2066768", "PLcot_FTZ2066768", "FFCM-00772", "Por definir", "Carzoma", "", "", "$123.024,08", "", "$123.024,08", "", "$0,00", "$123.024,08"],
+["15/05/2026", "Proc. Nacionalizacion", "Sunet", "SNT202603015-3/03079-1", "SNT202603015-3/03079-1", "", "MEDUYO837700", "CAIU4755769", "Carzoma", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
+["25/05/2026", "Proc. Nacionalizacion", "Sunet", "SNT202603034-2/03079-2", "SNT202603034-2/03079-2", "", "MEDUXZ669128", "TGBU9811869", "Carzoma", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
+["16/11/2025", "Proc. Nacionalizacion", "HTFuture", "HPI-R036-25111601", "", "", "", "", "", "", "", "$28.454,36", "", "$28.454,36", "20%", "$5.690,87", "$22.763,49"],
+["22/01/2026", "En camino ", "Queenton", "PI QTM260122PF", "", "", "26040802", "Por definir", "Carzoma", "", "", "$18.652,00", "", "$18.652,00", "", "$0,00", "$18.652,00"],
+["1/06/2026", "En camino ", "Sunet", "SNT202606071", "", "", "", "", "", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
+["2/06/2026", "En produccion", "Sumec", "26Mexus-C6273CF", "", "", "MEDUY6848293", "MSGU5112278", "Carzoma", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
+["16/04/2026", "En produccion", "Sunet", "SNT202604038-1", "", "", "", "Por definir", "Carzoma", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
+["", "En produccion", "ZIKUN", "ZT20260709", "", "", "", "", "", "31/10/1899", "", "", "", "$0,00", "", "$0,00", "$0,00"],
+["", "En produccion", "JILONG", "04232026061701", "", "", "", "", "", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
+["", "En produccion", "WICHIT", "723001", "", "", "", "", "", "31/10/1899", "", "", "", "$0,00", "", "$0,00", "$0,00"],
+["20/11/2025", "Indefinido", "Komshine/Tawa", "83072025111801", "", "", "", "Por definir", "", "", "", "$20,00", "", "$20,00", "", "$0,00", "$20,00"],
+["24/02/2026", "Indefinido", "Komshine/Tawa", "83102026022402", "", "", "", "ENVIO POR DHL", "", "", "", "$31.450,00", "$4.123,00", "$35.573,00", "", "$0,00", "$35.573,00"],
+["3/11/2025", "Recibido", "ZHENGZHOU WEUNION", "ZHENGZHOU WEUNION", "20251022WUNNIC001 invoice & packing list", "", "MEDUWG066196", "BMOU6756281", "Carzoma", "29/11/2025", "28/01/2026", "$22.240,00", "", "$22.240,00", "100%", "$22.240,00", "$0,00"],
+["9/10/2025", "Recibido", "Sunet", "SNT202510008 PI", "SNT202510008 Invoice & Packing list", "", "MEDURC272503", "GAOU6746317", "", "24/11/2025", "12/01/2026", "$63.905,00", "", "$63.905,00", "", "$0,00", "$63.905,00"],
+["5/05/2025", "Recibido", "Komshine/Tawa", "83072025050501 - PI", "", "", "BillOfLading-MEDUW4192573", "UETU6568880", "", "", "", "$17.080,00", "", "$17.080,00", "100%", "$17.080,00", "$0,00"],
 ];
 function loadDemo(){
   ROWS=normalize(DEMO);
