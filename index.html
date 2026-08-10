@@ -269,6 +269,34 @@
 
 </div>
 
+  <!-- MODAL DE SUBIDA -->
+  <div id="uploadModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.6);z-index:999;align-items:center;justify-content:center;backdrop-filter:blur(2px)">
+    <div style="background:var(--card);border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:0 10px 25px rgba(0,0,0,0.1);position:relative;border:1px solid var(--line)" onclick="event.stopPropagation()">
+      <button id="modalCloseX" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;line-height:1;cursor:pointer;color:var(--muted);padding:0;">&times;</button>
+      <h3 style="margin:0 0 16px;font-size:19px">Subir documento</h3>
+      
+      <div style="margin-bottom:18px;font-size:14px;background:var(--bg);padding:12px;border-radius:9px;border:1px solid var(--line);">
+        <div><span style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Carga:</span> <span>Ejemplo de Proveedor - PI-1234</span></div>
+        <div style="margin-top:6px"><span style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Etapa:</span> <span>Invoice</span></div>
+      </div>
+      
+      <div class="fld" style="margin-bottom:16px">
+        <label for="modalDocNum">Número de documento</label>
+        <input type="text" id="modalDocNum" placeholder="Ej. INV-2023-001" />
+      </div>
+      
+      <div class="fld" style="margin-bottom:24px">
+        <label for="modalDocFile">Archivo</label>
+        <input type="file" id="modalDocFile" accept=".pdf,.jpg,.jpeg,.png" style="padding:6px;background:#fff" />
+      </div>
+      
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button id="modalCancel" class="btn btn-ghost">Cancelar</button>
+        <button id="modalSubmit" class="btn btn-primary">Subir</button>
+      </div>
+    </div>
+  </div>
+
 <script>
 /* ============================================================
    CONFIG — cambia estas dos líneas si mueves la hoja
@@ -1003,6 +1031,24 @@ document.getElementById("clearFilters").onclick=()=>{
 };
 
 loadLive();
+
+/* ====== MODAL DE SUBIDA ====== */
+function abrirModal() {
+  document.getElementById("uploadModal").style.display = "flex";
+}
+function cerrarModal() {
+  document.getElementById("uploadModal").style.display = "none";
+}
+document.getElementById("uploadModal").onclick = cerrarModal;
+document.getElementById("modalCloseX").onclick = cerrarModal;
+document.getElementById("modalCancel").onclick = cerrarModal;
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && document.getElementById("uploadModal").style.display === "flex") {
+    cerrarModal();
+  }
+});
+window.__testModal = () => abrirModal();
+
 </script>
 </body>
 </html>
