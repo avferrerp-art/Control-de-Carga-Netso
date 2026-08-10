@@ -307,6 +307,7 @@ const SHEET_ID   = "1g1MO7BAW4GwyM74vmR3s00_j8DEFh_QMZ2kUiIPMZ00";  // solo para
 const SHEET_NAME = "CONTROL DE CARGAS";
 const SHEET_URL  = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
 const UPLOAD_TOKEN = "netso-pruebas-7k3m9x2q8f";
+const UPLOAD_URL = "https://script.google.com/macros/s/AKfycbxunQr7hdyv2-pU95MeQl5ZsnlGJtlpbNa8Zqc7XxkAO_USJ5SjN3XUMLHgHRarnCK1jg/exec";
 
 /* URL de la hoja PUBLICADA (Archivo → Compartir → Publicar en la Web).
    Ojo: este ID (2PACX-…) es distinto al ID del documento. Si republicas la
@@ -1048,7 +1049,7 @@ loadLive();
 function setModalAlert(msg, isError) {
   const el = document.getElementById("modalAlert");
   if (!msg) { el.style.display = "none"; return; }
-  el.textContent = msg;
+  el.innerHTML = msg;
   el.style.display = "block";
   el.style.backgroundColor = isError ? "#fef2f2" : "#dcfce7";
   el.style.color = isError ? "var(--red)" : "var(--green-d)";
@@ -1070,6 +1071,7 @@ function abrirModal(btn) {
   modal.style.display = "flex";
 }
 function cerrarModal() {
+  if (document.getElementById("modalSubmit").disabled) return;
   document.getElementById("uploadModal").style.display = "none";
 }
 document.getElementById("uploadModal").onclick = cerrarModal;
@@ -1110,15 +1112,57 @@ document.getElementById("modalSubmit").onclick = () => {
   const mimeType = file.type;
 
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     const dataUrl = e.target.result;
     const base64 = dataUrl.split(",")[1];
     const payload = { token: UPLOAD_TOKEN, id, etapa, numero: docNum, filename, mimeType, base64 };
     
-    const logObj = { ...payload, base64: payload.base64.substring(0, 50) + "..." };
-    console.log("Datos a subir:", logObj);
+    const btnSubmit = document.getElementById("modalSubmit");
+    const originalText = btnSubmit.textContent;
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = "Subiendo…";
     
-    setModalAlert("Validado correctamente (aún no se envía)", false);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    
+    try {
+      const res = await fetch(UPLOAD_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      
+      let data;
+      try {
+        data = await res.json();
+      } catch (err) {
+        throw new Error("no-json");
+      }
+      
+      if (data && data.ok) {
+        setModalAlert(`Documento subido. <a href="${data.url}" target="_blank" rel="noopener" style="color:#15803d;text-decoration:underline">Ver en Drive</a>`, false);
+        setTimeout(() => {
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = originalText;
+          cerrarModal();
+        }, 2000);
+      } else {
+        setModalAlert(data?.error || "Error desconocido al subir", true);
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = originalText;
+      }
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === "AbortError") {
+        setModalAlert("El servidor tardó demasiado en responder (timeout de 60s).", true);
+      } else {
+        setModalAlert("No se pudo contactar el servidor", true);
+      }
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = originalText;
+    }
   };
   reader.onerror = () => setModalAlert("Error al leer el archivo localmente.", true);
   reader.readAsDataURL(file);
