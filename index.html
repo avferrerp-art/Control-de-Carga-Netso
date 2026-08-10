@@ -523,6 +523,13 @@ function makeFinder(H){
   };
 }
 
+function calcRowStatus(row){
+  row.missing = REQUIRED[row.estado].filter(k=>IS_DOC(k) && STAGE_AVAILABLE.has(k) && !row.stages[k].has);
+  row.sem = row.estado==="indef"||row.estado==="na" ? "r"
+          : row.missing.length===0 ? "g"
+          : row.missing.length===1 ? "a" : "r";
+}
+
 function normalize(matrix, links){
   const hIdx=findHeader(matrix);
   const H=(matrix[hIdx]||[]).map(c=>String(c||"").trim());
@@ -609,10 +616,7 @@ function normalize(matrix, links){
       stages,
     };
     // solo documentos: ETD/ETA nunca cuentan como faltante
-    row.missing = REQUIRED[row.estado].filter(k=>IS_DOC(k) && STAGE_AVAILABLE.has(k) && !stages[k].has);
-    row.sem = row.estado==="indef"||row.estado==="na" ? "r"
-            : row.missing.length===0 ? "g"
-            : row.missing.length===1 ? "a" : "r";
+    calcRowStatus(row);
     out.push(row);
   }
 
@@ -1142,6 +1146,16 @@ document.getElementById("modalSubmit").onclick = () => {
       }
       
       if (data && data.ok) {
+        const row = ROWS.find(r => r.id === id);
+        if (row) {
+          const st = row.stages[etapa];
+          st.url = data.url;
+          if (!st.label) st.label = docNum;
+          st.has = true;
+          calcRowStatus(row);
+          renderAll();
+        }
+        
         setModalAlert(`Documento subido. <a href="${data.url}" target="_blank" rel="noopener" style="color:#15803d;text-decoration:underline">Ver en Drive</a>`, false);
         setTimeout(() => {
           btnSubmit.disabled = false;
