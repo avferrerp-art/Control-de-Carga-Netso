@@ -275,6 +275,8 @@
       <button id="modalCloseX" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;line-height:1;cursor:pointer;color:var(--muted);padding:0;">&times;</button>
       <h3 style="margin:0 0 16px;font-size:19px">Subir documento</h3>
       
+      <div id="modalAlert" style="display:none; font-size:13px; font-weight:600; padding:10px 14px; border-radius:9px; margin-bottom:16px;"></div>
+      
       <div style="margin-bottom:18px;font-size:14px;background:var(--bg);padding:12px;border-radius:9px;border:1px solid var(--line);">
         <div><span style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Carga:</span> <span id="modalCargaText">Ejemplo de Proveedor - PI-1234</span></div>
         <div style="margin-top:6px"><span style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Etapa:</span> <span id="modalEtapaText">Invoice</span></div>
@@ -304,6 +306,7 @@
 const SHEET_ID   = "1g1MO7BAW4GwyM74vmR3s00_j8DEFh_QMZ2kUiIPMZ00";  // solo para el botón "abrir hoja"
 const SHEET_NAME = "CONTROL DE CARGAS";
 const SHEET_URL  = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
+const UPLOAD_TOKEN = "netso-pruebas-7k3m9x2q8f";
 
 /* URL de la hoja PUBLICADA (Archivo → Compartir → Publicar en la Web).
    Ojo: este ID (2PACX-…) es distinto al ID del documento. Si republicas la
@@ -1042,6 +1045,16 @@ document.getElementById("clearFilters").onclick=()=>{
 loadLive();
 
 /* ====== MODAL DE SUBIDA ====== */
+function setModalAlert(msg, isError) {
+  const el = document.getElementById("modalAlert");
+  if (!msg) { el.style.display = "none"; return; }
+  el.textContent = msg;
+  el.style.display = "block";
+  el.style.backgroundColor = isError ? "#fef2f2" : "#dcfce7";
+  el.style.color = isError ? "var(--red)" : "var(--green-d)";
+  el.style.border = `1px solid ${isError ? "#fecaca" : "#bbf7d0"}`;
+}
+
 function abrirModal(btn) {
   const modal = document.getElementById("uploadModal");
   if (btn) {
@@ -1051,6 +1064,8 @@ function abrirModal(btn) {
     document.getElementById("modalCargaText").textContent = (d.prov || "Sin proveedor") + " - " + (d.rid || "");
     document.getElementById("modalEtapaText").textContent = d.stname || "";
     document.getElementById("modalDocNum").value = d.docnum || "";
+    document.getElementById("modalDocFile").value = "";
+    setModalAlert("", false);
   }
   modal.style.display = "flex";
 }
@@ -1065,6 +1080,50 @@ document.addEventListener("keydown", e => {
     cerrarModal();
   }
 });
+
+document.getElementById("modalSubmit").onclick = () => {
+  setModalAlert("", false);
+  const docNum = document.getElementById("modalDocNum").value.trim();
+  if (!docNum) return setModalAlert("El número de documento no puede estar vacío.", true);
+
+  const fileInput = document.getElementById("modalDocFile");
+  if (!fileInput.files || !fileInput.files.length) return setModalAlert("Debe seleccionar un archivo.", true);
+
+  const file = fileInput.files[0];
+  const allowed = [".pdf", ".jpg", ".jpeg", ".png"];
+  const fileName = file.name;
+  const ext = fileName.includes('.') ? "." + fileName.split('.').pop().toLowerCase() : "";
+  if (!allowed.includes(ext)) {
+    return setModalAlert("Extensión no permitida. Solo .pdf, .jpg, .jpeg, .png", true);
+  }
+
+  const mb = file.size / (1024 * 1024);
+  if (mb > 10) {
+    return setModalAlert(`El archivo pesa ${mb.toFixed(2)} MB. El máximo permitido es 10 MB.`, true);
+  }
+
+  const modal = document.getElementById("uploadModal");
+  const id = modal.dataset.rid;
+  const etapa = modal.dataset.stkey;
+  const safeNum = docNum.replace(/[^a-zA-Z0-9\-_]/g, "");
+  const filename = `${id}_${etapa.toUpperCase()}_${safeNum}${ext}`;
+  const mimeType = file.type;
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    const base64 = dataUrl.split(",")[1];
+    const payload = { token: UPLOAD_TOKEN, id, etapa, numero: docNum, filename, mimeType, base64 };
+    
+    const logObj = { ...payload, base64: payload.base64.substring(0, 50) + "..." };
+    console.log("Datos a subir:", logObj);
+    
+    setModalAlert("Validado correctamente (aún no se envía)", false);
+  };
+  reader.onerror = () => setModalAlert("Error al leer el archivo localmente.", true);
+  reader.readAsDataURL(file);
+};
+
 window.__testModal = () => abrirModal();
 
 </script>
