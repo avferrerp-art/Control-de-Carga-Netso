@@ -276,8 +276,8 @@
       <h3 style="margin:0 0 16px;font-size:19px">Subir documento</h3>
       
       <div style="margin-bottom:18px;font-size:14px;background:var(--bg);padding:12px;border-radius:9px;border:1px solid var(--line);">
-        <div><span style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Carga:</span> <span>Ejemplo de Proveedor - PI-1234</span></div>
-        <div style="margin-top:6px"><span style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Etapa:</span> <span>Invoice</span></div>
+        <div><span style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Carga:</span> <span id="modalCargaText">Ejemplo de Proveedor - PI-1234</span></div>
+        <div style="margin-top:6px"><span style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Etapa:</span> <span id="modalEtapaText">Invoice</span></div>
       </div>
       
       <div class="fld" style="margin-bottom:16px">
@@ -705,9 +705,18 @@ function timelineHTML(r){
     else if(s.label) val=esc(s.label);
     else if(s.date)  val=fmtDate(s.date);
     else if(late)    val=`<span style="color:var(--red);font-weight:700">Falta</span>`;
+    let uploadBtn = "";
+    if (st.doc && !s.url) {
+      if (!r.id) {
+        uploadBtn = `<div style="margin-top:6px;font-size:11px;color:var(--muted);" title="Esta carga no tiene ID; no se puede subir documento">sin ID</div>`;
+      } else {
+        const lbl = s.label || "";
+        uploadBtn = `<button style="margin-top:6px;font-size:11px;padding:2px 6px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation(); abrirModal(this)" data-rid="${esc(r.id)}" data-prov="${esc(r.prov)}" data-stkey="${esc(st.key)}" data-stname="${esc(st.name)}" data-docnum="${esc(lbl)}">⬆ Subir</button>`;
+      }
+    }
     const dt=(s.date&&s.label)?`<div class="tl-date">${fmtDate(s.date)}</div>`:"";
     return `<div class="${cls}"><div class="tl-dot">${st.short}</div>
-      <div class="tl-name">${st.name}</div><div class="tl-val">${val}</div>${dt}</div>`;
+      <div class="tl-name">${st.name}</div><div class="tl-val">${val}</div>${uploadBtn}${dt}</div>`;
   }).join("")+`</div>`;
 }
 
@@ -1033,8 +1042,17 @@ document.getElementById("clearFilters").onclick=()=>{
 loadLive();
 
 /* ====== MODAL DE SUBIDA ====== */
-function abrirModal() {
-  document.getElementById("uploadModal").style.display = "flex";
+function abrirModal(btn) {
+  const modal = document.getElementById("uploadModal");
+  if (btn) {
+    const d = btn.dataset;
+    modal.dataset.stkey = d.stkey || "";
+    modal.dataset.rid = d.rid || "";
+    document.getElementById("modalCargaText").textContent = (d.prov || "Sin proveedor") + " - " + (d.rid || "");
+    document.getElementById("modalEtapaText").textContent = d.stname || "";
+    document.getElementById("modalDocNum").value = d.docnum || "";
+  }
+  modal.style.display = "flex";
 }
 function cerrarModal() {
   document.getElementById("uploadModal").style.display = "none";
