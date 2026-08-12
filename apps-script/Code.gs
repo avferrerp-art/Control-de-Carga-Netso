@@ -2,7 +2,7 @@
    CONFIG — edita estas 3 líneas antes de desplegar
    ============================================================ */
 const TOKEN      = "TU-TOKEN-AQUI";
-const FOLDER_ID  = ""TU-FOLDER-ID-AQUI";     // de drive.google.com/drive/folders/AQUI
+const FOLDER_ID  = "TU-FOLDER-ID-AQUI";     // de drive.google.com/drive/folders/AQUI
 const SHEET_NAME = "CONTROL DE CARGAS";
 const LOG_SHEET  = "LOG";
 const DRY_RUN    = true;   
