@@ -1,297 +1,1018 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Control de Cargas y Compras · Netso</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>
-  :root{
-    --green:#16a34a; --green-d:#15803d; --blue:#2563eb; --amber:#f59e0b;
-    --red:#dc2626; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc;
-    --card:#ffffff; --grey:#e5e9f0;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink)}
-  .wrap{max-width:1480px;margin:0 auto;padding:24px 28px 60px}
-  /* Header */
-  .head-outer{position:relative}
-  /* padding simétrico: mantiene el centrado y reserva el espacio de los botones */
-  .brand{display:flex;align-items:center;gap:10px;margin:6px auto 0;flex:1;justify-content:center;
-    flex-direction:column;padding:0 240px}
-  .logo{display:flex;align-items:center;justify-content:center}
-  .netso-logo{height:52px;width:auto;display:block}
-  h1{font-size:30px;font-weight:800;margin:12px 0 2px;text-align:center}
-  .sub{color:var(--muted);font-size:15px;text-align:center;margin:0}
-  .actions{display:flex;align-items:center;gap:8px;position:absolute;right:0;top:0;z-index:3}
-  .live{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12.5px;white-space:nowrap}
-  .dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(22,163,74,.15)}
-  .dot.off{background:var(--amber);box-shadow:0 0 0 3px rgba(245,158,11,.15)}
-  .dot.err{background:var(--red);box-shadow:0 0 0 3px rgba(220,38,38,.15)}
-  button.btn{border:none;border-radius:9px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer}
-  .btn-primary{background:var(--green);color:#fff}
-  .btn-primary:hover{background:var(--green-d)}
-  .btn-ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
-  .btn-ghost:hover{background:#f1f5f9}
-  .drive-bar{display:flex;justify-content:center;align-items:center;gap:16px;margin-top:10px;flex-wrap:wrap}
-  .drive-link{display:inline-flex;align-items:center;gap:6px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;
-    text-decoration:none;padding:5px 11px;border-radius:7px;font-size:12.5px;font-weight:600;transition:background .15s;line-height:1.2}
-  .drive-link:hover{background:#dbeafe}
-  .drive-link svg{width:14px;height:14px;flex:0 0 14px}   /* sin esto el SVG crece a su tamaño natural */
-  .drive-link .arrow{opacity:.6;font-weight:700;font-size:11px}
-  hr.div{border:none;border-top:1px solid var(--line);margin:22px 0}
-  /* KPI cards */
-  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
-  .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;border-top:4px solid var(--line);box-shadow:0 1px 2px rgba(15,23,42,.04)}
-  .kpi .label{color:var(--muted);font-size:13.5px;font-weight:600;margin-bottom:10px}
-  .kpi .num{font-size:38px;font-weight:800;line-height:1}
-  .kpi .num.money{font-size:28px}
-  .kpi .foot{color:var(--muted);font-size:13px;margin-top:8px}
-  .kpi.total{border-top-color:#334155}.kpi.total .num{color:var(--ink)}
-  .kpi.activas{border-top-color:var(--blue)}.kpi.activas .num{color:var(--blue)}
-  .kpi.incomp{border-top-color:var(--red)}.kpi.incomp .num{color:var(--red)}
-  .kpi.transito{border-top-color:#7c3aed}.kpi.transito .num{color:#7c3aed}
-  .kpi.valor{border-top-color:#0d9488}.kpi.valor .num{color:#0d9488}
-  .kpi.pagar{border-top-color:var(--amber)}.kpi.pagar .num{color:var(--amber)}
-  /* Panels */
-  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 22px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
-  .panel h3{margin:0 0 2px;font-size:19px}
-  .panel .p-sub{color:var(--muted);font-size:14px;margin:0 0 14px}
-  .filters{display:flex;gap:22px;align-items:flex-end;flex-wrap:wrap;margin-top:18px}
-  .fld{display:flex;flex-direction:column;gap:6px;min-width:180px}
-  .fld label{font-size:13px;color:var(--muted);font-weight:600}
-  .fld select,.fld input{padding:10px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff;font-family:inherit}
-  .fld.grow{flex:1;min-width:240px}
-  .clear{margin-left:auto;color:var(--blue);font-size:14px;text-decoration:underline;cursor:pointer;align-self:center}
-  /* Pipeline bar */
-  .pipe{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;margin-top:6px}
-  .pipe-cell{border:1px solid var(--line);border-radius:11px;padding:12px 10px;text-align:center;cursor:pointer;background:#fff;transition:.15s}
-  .pipe-cell:hover{background:#f8fafc;border-color:#cbd5e1}
-  .pipe-cell.on{border-color:var(--blue);background:#eff6ff;box-shadow:0 0 0 2px rgba(37,99,235,.12)}
-  .pipe-cell .pn{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.4px;text-transform:uppercase}
-  .pipe-cell .pv{font-size:26px;font-weight:800;margin:6px 0 2px}
-  .pipe-cell .pm{font-size:11.5px;color:var(--muted)}
-  .pipe-cell .bar{height:5px;border-radius:99px;background:#e2e8f0;margin-top:9px;overflow:hidden}
-  .pipe-cell .bar i{display:block;height:100%;background:var(--green);border-radius:99px}
-  /* ETD/ETA: hitos de fecha, no documentos — barra azul para diferenciarlos */
-  .pipe-cell.fecha .bar i{background:#93c5fd}
-  .pipe-cell.fecha .pv{color:var(--muted)}
-  .tagf{display:inline-block;background:#e0e7ff;color:#3730a3;border-radius:4px;
-    padding:1px 5px;font-size:9px;letter-spacing:.2px;margin-left:4px;vertical-align:1px}
-  /* Charts */
-  .charts{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
-  .chart-box{position:relative;height:300px}
-  /* Table */
-  .tbl-wrap{margin-top:18px}
-  table{width:100%;border-collapse:collapse;font-size:13.5px}
-  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
-  th{color:var(--muted);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
-  tr.row{cursor:pointer}
-  tr.row:hover{background:#f8fafc}
-  td.id{font-weight:600}
-  td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
-  .st{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
-  .st.recibido{background:#dcfce7;color:#166534}
-  .st.camino{background:#dbeafe;color:#1e40af}
-  .st.nacion{background:#e0e7ff;color:#3730a3}
-  .st.produccion{background:#fef3c7;color:#92400e}
-  .st.indef{background:#fee2e2;color:#991b1b}
-  .st.na{background:#f1f5f9;color:#475569}
-  /* Track (7 pasos compactos) */
-  .track{display:flex;gap:3px;align-items:center}
-  .step{display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:23px;border-radius:6px;
-    font-size:10px;font-weight:800;letter-spacing:.3px;text-decoration:none;border:1px solid var(--line);
-    background:#f8fafc;color:#b0bac6}
-  .step.ok{background:#dcfce7;border-color:#bbf7d0;color:#166534}
-  /* Con link: azul fuerte + subrayado, para que se lea como enlace y no como etiqueta */
-  .step.ok.lnk{background:#dbeafe;border-color:#60a5fa;color:#1d4ed8;cursor:pointer;
-    text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1.5px;
-    box-shadow:0 1px 2px rgba(37,99,235,.15)}
-  .step.ok.lnk:hover{background:var(--blue);border-color:var(--blue);color:#fff}
-  .legend{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin:0 0 14px;
-    font-size:12.5px;color:var(--muted);background:#f8fafc;border:1px solid var(--line);
-    border-radius:10px;padding:10px 14px}
-  .legend > span{display:inline-flex;align-items:center;gap:7px}
-  .step.late{background:#fee2e2;border-color:#fecaca;color:#991b1b}
-  .step.na{background:repeating-linear-gradient(45deg,#fff,#fff 3px,#f1f5f9 3px,#f1f5f9 6px);border-style:dashed;color:#cbd5e1}
-  /* Hitos de fecha (ETD/ETA): índigo, para que no se confundan con documentos */
-  .step.date.ok{background:#e0e7ff;border-color:#c7d2fe;color:#3730a3}
-  .flag{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:middle}
-  .flag.g{background:var(--green)}.flag.a{background:var(--amber)}.flag.r{background:var(--red)}
-  /* Detalle expandible */
-  tr.detail td{background:#f8fafc;padding:0;border-bottom:2px solid var(--line)}
-  .dwrap{padding:20px 24px}
-  .tl{display:flex;align-items:flex-start;margin:4px 0 18px}
-  .tl-step{flex:1;text-align:center;position:relative;min-width:0}
-  .tl-step:not(:last-child):after{content:"";position:absolute;top:15px;left:50%;width:100%;height:3px;background:#e2e8f0;z-index:1}
-  .tl-step.done:not(:last-child):after{background:#86efac}
-  .tl-dot{width:32px;height:32px;border-radius:50%;margin:0 auto 9px;display:flex;align-items:center;justify-content:center;
-    font-size:11px;font-weight:800;background:#e2e8f0;color:#94a3b8;position:relative;z-index:2;border:3px solid var(--bg)}
-  .tl-step.done .tl-dot{background:var(--green);color:#fff}
-  .tl-step.late .tl-dot{background:var(--red);color:#fff}
-  .tl-name{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--muted)}
-  .tl-val{font-size:12.5px;margin-top:3px;word-break:break-word;padding:0 4px}
-  .tl-val a{color:var(--blue);font-weight:600;text-decoration:none}
-  .tl-val a:hover{text-decoration:underline}
-  .tl-date{font-size:11px;color:var(--muted);margin-top:2px}
-  .dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px 22px;border-top:1px solid var(--line);padding-top:16px}
-  .dg-k{font-size:11.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px}
-  .dg-v{font-size:14px;margin-top:3px;font-weight:600}
-  /* Banners */
-  .msg{padding:40px;text-align:center;color:var(--muted)}
-  .banner{border-radius:10px;padding:12px 16px;margin-top:16px;font-size:14px;display:none}
-  .banner.err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
-  .banner.warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
-  .banner b{font-weight:700}
-  .alerts{margin-top:18px}
-  .alerts ul{margin:8px 0 0;padding-left:20px;font-size:13.5px;color:var(--muted);line-height:1.7}
-  .alerts li b{color:var(--ink)}
-  @media(max-width:1100px){
-    .kpis{grid-template-columns:repeat(2,1fr)}.charts{grid-template-columns:1fr}
-    .actions{position:static;justify-content:center;margin-top:12px}
-    .brand{padding:0}
-    .pipe{grid-template-columns:repeat(4,1fr)}
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Control de Cargas y Compras · Netso</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --green: #16a34a;
+      --green-d: #15803d;
+      --blue: #2563eb;
+      --amber: #f59e0b;
+      --red: #dc2626;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --grey: #e5e9f0;
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink)
+    }
+
+    .wrap {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 24px 28px 60px
+    }
+
+    /* Header */
+    .head-outer {
+      position: relative
+    }
+
+    /* padding simétrico: mantiene el centrado y reserva el espacio de los botones */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 6px auto 0;
+      flex: 1;
+      justify-content: center;
+      flex-direction: column;
+      padding: 0 240px
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .netso-logo {
+      height: 52px;
+      width: auto;
+      display: block
+    }
+
+    h1 {
+      font-size: 30px;
+      font-weight: 800;
+      margin: 12px 0 2px;
+      text-align: center
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 15px;
+      text-align: center;
+      margin: 0
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      position: absolute;
+      right: 0;
+      top: 0;
+      z-index: 3
+    }
+
+    .live {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12.5px;
+      white-space: nowrap
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 3px rgba(22, 163, 74, .15)
+    }
+
+    .dot.off {
+      background: var(--amber);
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, .15)
+    }
+
+    .dot.err {
+      background: var(--red);
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, .15)
+    }
+
+    button.btn {
+      border: none;
+      border-radius: 9px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer
+    }
+
+    .btn-primary {
+      background: var(--green);
+      color: #fff
+    }
+
+    .btn-primary:hover {
+      background: var(--green-d)
+    }
+
+    .btn-ghost {
+      background: #fff;
+      color: var(--ink);
+      border: 1px solid var(--line)
+    }
+
+    .btn-ghost:hover {
+      background: #f1f5f9
+    }
+
+    .drive-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      margin-top: 10px;
+      flex-wrap: wrap
+    }
+
+    .drive-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+      text-decoration: none;
+      padding: 5px 11px;
+      border-radius: 7px;
+      font-size: 12.5px;
+      font-weight: 600;
+      transition: background .15s;
+      line-height: 1.2
+    }
+
+    .drive-link:hover {
+      background: #dbeafe
+    }
+
+    .drive-link svg {
+      width: 14px;
+      height: 14px;
+      flex: 0 0 14px
+    }
+
+    /* sin esto el SVG crece a su tamaño natural */
+    .drive-link .arrow {
+      opacity: .6;
+      font-weight: 700;
+      font-size: 11px
+    }
+
+    hr.div {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 22px 0
+    }
+
+    /* KPI cards */
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px
+    }
+
+    .kpi {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px 22px;
+      border-top: 4px solid var(--line);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, .04)
+    }
+
+    .kpi .label {
+      color: var(--muted);
+      font-size: 13.5px;
+      font-weight: 600;
+      margin-bottom: 10px
+    }
+
+    .kpi .num {
+      font-size: 38px;
+      font-weight: 800;
+      line-height: 1
+    }
+
+    .kpi .num.money {
+      font-size: 28px
+    }
+
+    .kpi .foot {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 8px
+    }
+
+    .kpi.total {
+      border-top-color: #334155
+    }
+
+    .kpi.total .num {
+      color: var(--ink)
+    }
+
+    .kpi.activas {
+      border-top-color: var(--blue)
+    }
+
+    .kpi.activas .num {
+      color: var(--blue)
+    }
+
+    .kpi.incomp {
+      border-top-color: var(--red)
+    }
+
+    .kpi.incomp .num {
+      color: var(--red)
+    }
+
+    .kpi.transito {
+      border-top-color: #7c3aed
+    }
+
+    .kpi.transito .num {
+      color: #7c3aed
+    }
+
+    .kpi.valor {
+      border-top-color: #0d9488
+    }
+
+    .kpi.valor .num {
+      color: #0d9488
+    }
+
+    .kpi.pagar {
+      border-top-color: var(--amber)
+    }
+
+    .kpi.pagar .num {
+      color: var(--amber)
+    }
+
+    /* Panels */
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px 22px;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, .04)
+    }
+
+    .panel h3 {
+      margin: 0 0 2px;
+      font-size: 19px
+    }
+
+    .panel .p-sub {
+      color: var(--muted);
+      font-size: 14px;
+      margin: 0 0 14px
+    }
+
+    .filters {
+      display: flex;
+      gap: 22px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      margin-top: 18px
+    }
+
+    .fld {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 180px
+    }
+
+    .fld label {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 600
+    }
+
+    .fld select,
+    .fld input {
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      font-size: 14px;
+      background: #fff;
+      font-family: inherit
+    }
+
+    .fld.grow {
+      flex: 1;
+      min-width: 240px
+    }
+
+    .clear {
+      margin-left: auto;
+      color: var(--blue);
+      font-size: 14px;
+      text-decoration: underline;
+      cursor: pointer;
+      align-self: center
+    }
+
+    /* Pipeline bar */
+    .pipe {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px;
+      margin-top: 6px
+    }
+
+    .pipe-cell {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      padding: 12px 10px;
+      text-align: center;
+      cursor: pointer;
+      background: #fff;
+      transition: .15s
+    }
+
+    .pipe-cell:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1
+    }
+
+    .pipe-cell.on {
+      border-color: var(--blue);
+      background: #eff6ff;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, .12)
+    }
+
+    .pipe-cell .pn {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: .4px;
+      text-transform: uppercase
+    }
+
+    .pipe-cell .pv {
+      font-size: 26px;
+      font-weight: 800;
+      margin: 6px 0 2px
+    }
+
+    .pipe-cell .pm {
+      font-size: 11.5px;
+      color: var(--muted)
+    }
+
+    .pipe-cell .bar {
+      height: 5px;
+      border-radius: 99px;
+      background: #e2e8f0;
+      margin-top: 9px;
+      overflow: hidden
+    }
+
+    .pipe-cell .bar i {
+      display: block;
+      height: 100%;
+      background: var(--green);
+      border-radius: 99px
+    }
+
+    /* ETD/ETA: hitos de fecha, no documentos — barra azul para diferenciarlos */
+    .pipe-cell.fecha .bar i {
+      background: #93c5fd
+    }
+
+    .pipe-cell.fecha .pv {
+      color: var(--muted)
+    }
+
+    .tagf {
+      display: inline-block;
+      background: #e0e7ff;
+      color: #3730a3;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 9px;
+      letter-spacing: .2px;
+      margin-left: 4px;
+      vertical-align: 1px
+    }
+
+    /* Charts */
+    .charts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 18px
+    }
+
+    .chart-box {
+      position: relative;
+      height: 300px
+    }
+
+    /* Table */
+    .tbl-wrap {
+      margin-top: 18px
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 12.5px;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+      white-space: nowrap
+    }
+
+    tr.row {
+      cursor: pointer
+    }
+
+    tr.row:hover {
+      background: #f8fafc
+    }
+
+    td.id {
+      font-weight: 600
+    }
+
+    td.num {
+      text-align: right;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums
+    }
+
+    .st {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap
+    }
+
+    .st.recibido {
+      background: #dcfce7;
+      color: #166534
+    }
+
+    .st.camino {
+      background: #dbeafe;
+      color: #1e40af
+    }
+
+    .st.nacion {
+      background: #e0e7ff;
+      color: #3730a3
+    }
+
+    .st.produccion {
+      background: #fef3c7;
+      color: #92400e
+    }
+
+    .st.indef {
+      background: #fee2e2;
+      color: #991b1b
+    }
+
+    .st.na {
+      background: #f1f5f9;
+      color: #475569
+    }
+
+    /* Track (7 pasos compactos) */
+    .track {
+      display: flex;
+      gap: 3px;
+      align-items: center
+    }
+
+    .step {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 36px;
+      height: 23px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .3px;
+      text-decoration: none;
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      color: #b0bac6
+    }
+
+    .step.ok {
+      background: #dcfce7;
+      border-color: #bbf7d0;
+      color: #166534
+    }
+
+    /* Con link: azul fuerte + subrayado, para que se lea como enlace y no como etiqueta */
+    .step.ok.lnk {
+      background: #dbeafe;
+      border-color: #60a5fa;
+      color: #1d4ed8;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      text-decoration-thickness: 1.5px;
+      box-shadow: 0 1px 2px rgba(37, 99, 235, .15)
+    }
+
+    .step.ok.lnk:hover {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      align-items: center;
+      margin: 0 0 14px;
+      font-size: 12.5px;
+      color: var(--muted);
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 14px
+    }
+
+    .legend>span {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px
+    }
+
+    .step.late {
+      background: #fee2e2;
+      border-color: #fecaca;
+      color: #991b1b
+    }
+
+    .step.na {
+      background: repeating-linear-gradient(45deg, #fff, #fff 3px, #f1f5f9 3px, #f1f5f9 6px);
+      border-style: dashed;
+      color: #cbd5e1
+    }
+
+    /* Hitos de fecha (ETD/ETA): índigo, para que no se confundan con documentos */
+    .step.date.ok {
+      background: #e0e7ff;
+      border-color: #c7d2fe;
+      color: #3730a3
+    }
+
+    .flag {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 7px;
+      vertical-align: middle
+    }
+
+    .flag.g {
+      background: var(--green)
+    }
+
+    .flag.a {
+      background: var(--amber)
+    }
+
+    .flag.r {
+      background: var(--red)
+    }
+
+    /* Detalle expandible */
+    tr.detail td {
+      background: #f8fafc;
+      padding: 0;
+      border-bottom: 2px solid var(--line)
+    }
+
+    .dwrap {
+      padding: 20px 24px
+    }
+
+    .tl {
+      display: flex;
+      align-items: flex-start;
+      margin: 4px 0 18px
+    }
+
+    .tl-step {
+      flex: 1;
+      text-align: center;
+      position: relative;
+      min-width: 0
+    }
+
+    .tl-step:not(:last-child):after {
+      content: "";
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      width: 100%;
+      height: 3px;
+      background: #e2e8f0;
+      z-index: 1
+    }
+
+    .tl-step.done:not(:last-child):after {
+      background: #86efac
+    }
+
+    .tl-dot {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      margin: 0 auto 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      background: #e2e8f0;
+      color: #94a3b8;
+      position: relative;
+      z-index: 2;
+      border: 3px solid var(--bg)
+    }
+
+    .tl-step.done .tl-dot {
+      background: var(--green);
+      color: #fff
+    }
+
+    .tl-step.late .tl-dot {
+      background: var(--red);
+      color: #fff
+    }
+
+    .tl-name {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+      color: var(--muted)
+    }
+
+    .tl-val {
+      font-size: 12.5px;
+      margin-top: 3px;
+      word-break: break-word;
+      padding: 0 4px
+    }
+
+    .tl-val a {
+      color: var(--blue);
+      font-weight: 600;
+      text-decoration: none
+    }
+
+    .tl-val a:hover {
+      text-decoration: underline
+    }
+
+    .tl-date {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px
+    }
+
+    .dgrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px 22px;
+      border-top: 1px solid var(--line);
+      padding-top: 16px
+    }
+
+    .dg-k {
+      font-size: 11.5px;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .3px
+    }
+
+    .dg-v {
+      font-size: 14px;
+      margin-top: 3px;
+      font-weight: 600
+    }
+
+    /* Banners */
+    .msg {
+      padding: 40px;
+      text-align: center;
+      color: var(--muted)
+    }
+
+    .banner {
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-top: 16px;
+      font-size: 14px;
+      display: none
+    }
+
+    .banner.err {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b
+    }
+
+    .banner.warn {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      color: #92400e
+    }
+
+    .banner b {
+      font-weight: 700
+    }
+
+    .alerts {
+      margin-top: 18px
+    }
+
+    .alerts ul {
+      margin: 8px 0 0;
+      padding-left: 20px;
+      font-size: 13.5px;
+      color: var(--muted);
+      line-height: 1.7
+    }
+
+    .alerts li b {
+      color: var(--ink)
+    }
+
+    @media(max-width:1100px) {
+      .kpis {
+        grid-template-columns: repeat(2, 1fr)
+      }
+
+      .charts {
+        grid-template-columns: 1fr
+      }
+
+      .actions {
+        position: static;
+        justify-content: center;
+        margin-top: 12px
+      }
+
+      .brand {
+        padding: 0
+      }
+
+      .pipe {
+        grid-template-columns: repeat(4, 1fr)
+      }
+    }
+  </style>
 </head>
+
 <body>
-<div class="wrap">
+  <div class="wrap">
 
-  <!-- HEADER -->
-  <div class="head-outer">
-    <div class="actions">
-      <button class="btn btn-ghost" id="btnUpload">Subir Excel</button>
-      <button class="btn btn-primary" id="btnReload">Actualizar</button>
-      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" />
+    <!-- HEADER -->
+    <div class="head-outer">
+      <div class="actions">
+        <button class="btn btn-ghost" id="btnUpload">Subir Excel</button>
+        <button class="btn btn-primary" id="btnReload">Actualizar</button>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" />
+      </div>
+      <div class="brand">
+        <div class="logo"><img class="netso-logo" src="netso-logo.png" alt="Netso" /></div>
+        <h1>Control de Cargas y Compras</h1>
+        <p class="sub">Seguimiento documental de importaciones · RFQ → PI → Invoice → Packing List → BL</p>
+      </div>
+      <div class="drive-bar">
+        <a class="drive-link" id="sheetLink" href="#" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M3 9h18M9 3v18" />
+          </svg>
+          Abrir hoja en Google Sheets <span class="arrow">↗</span>
+        </a>
+        <span class="live"><span class="dot" id="statusDot"></span><span id="statusText">Cargando…</span></span>
+      </div>
     </div>
-    <div class="brand">
-      <div class="logo"><img class="netso-logo" src="netso-logo.png" alt="Netso" /></div>
-      <h1>Control de Cargas y Compras</h1>
-      <p class="sub">Seguimiento documental de importaciones · RFQ → PI → Invoice → Packing List → BL</p>
+
+    <div class="banner err" id="errBanner"></div>
+    <div class="banner warn" id="demoBanner"></div>
+
+    <hr class="div" />
+
+    <!-- KPIs -->
+    <div class="kpis">
+      <div class="kpi total">
+        <div class="label">Cargas registradas</div>
+        <div class="num" id="kTotal">0</div>
+        <div class="foot" id="kTotalFoot">—</div>
+      </div>
+      <div class="kpi activas">
+        <div class="label">Cargas activas</div>
+        <div class="num" id="kActivas">0</div>
+        <div class="foot">No recibidas aún</div>
+      </div>
+      <div class="kpi transito">
+        <div class="label">En tránsito</div>
+        <div class="num" id="kTransito">0</div>
+        <div class="foot" id="kTransitoFoot">—</div>
+      </div>
+      <div class="kpi incomp">
+        <div class="label">Expedientes incompletos</div>
+        <div class="num" id="kIncomp">0</div>
+        <div class="foot" id="kIncompFoot">—</div>
+      </div>
     </div>
-    <div class="drive-bar">
-      <a class="drive-link" id="sheetLink" href="#" target="_blank" rel="noopener">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
-        Abrir hoja en Google Sheets <span class="arrow">↗</span>
-      </a>
-      <span class="live"><span class="dot" id="statusDot"></span><span id="statusText">Cargando…</span></span>
+
+    <!-- PIPELINE -->
+    <div class="panel" style="margin-top:18px">
+      <h3>Pipeline documental</h3>
+      <p class="p-sub">Cargas que ya tienen cada documento. Haz clic en una etapa para filtrar las que <b>todavía no lo
+          tienen</b>.</p>
+      <div class="pipe" id="pipe"></div>
     </div>
+
+    <!-- FILTROS -->
+    <div class="panel" style="margin-top:18px">
+      <h3>Filtros</h3>
+      <div class="filters">
+        <div class="fld"><label>Estado</label><select id="fEstado">
+            <option value="">Todos</option>
+          </select></div>
+        <div class="fld"><label>Proveedor</label><select id="fProv">
+            <option value="">Todos</option>
+          </select></div>
+        <div class="fld"><label>Agente aduanal</label><select id="fAgente">
+            <option value="">Todos</option>
+          </select></div>
+        <div class="fld grow"><label>Buscar (proveedor, PI, invoice, BL, contenedor)</label><input type="text"
+            id="fSearch" placeholder="Escribe para filtrar…" /></div>
+        <span class="clear" id="clearFilters">Limpiar filtros</span>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="charts">
+      <div class="panel">
+        <h3>Distribución por estado</h3>
+        <p class="p-sub">Proporción de cargas según su etapa logística</p>
+        <div class="chart-box"><canvas id="chartEstado"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Cargas por proveedor</h3>
+        <p class="p-sub">Top 10 por cantidad de cargas</p>
+        <div class="chart-box"><canvas id="chartProv"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Evolución mensual</h3>
+        <p class="p-sub">Cantidad de cargas por mes (según Fecha PI/INV)</p>
+        <div class="chart-box"><canvas id="chartMes"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Completitud del expediente</h3>
+        <p class="p-sub">Etapas registradas vs. sin registrar en cada carga</p>
+        <div class="chart-box"><canvas id="chartPipe"></canvas></div>
+      </div>
+    </div>
+
+    <!-- TABLA -->
+    <div class="panel tbl-wrap">
+      <h3>Detalle de cargas (<span id="tCount">0</span>)</h3>
+      <p class="p-sub">Clic en una fila para desplegar la línea de tiempo completa.</p>
+      <div class="legend">
+        <span><a class="step ok lnk" style="pointer-events:none">INV</a> <b>clic abre el documento en Drive</b></span>
+        <span><span class="step ok">INV</span> registrado, sin link en la celda</span>
+        <span><span class="step">INV</span> pendiente</span>
+        <span><span class="step late">INV</span> falta y ya debería estar</span>
+        <span><span class="step na">RFQ</span> columna no creada en la hoja</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Proveedor</th>
+              <th>PI No</th>
+              <th>Ruta documental</th>
+              <th>Estado</th>
+              <th>Contenedor</th>
+              <th>Agente aduanal</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr>
+              <td colspan="7" class="msg">Cargando datos…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ALERTAS DE CALIDAD -->
+    <div class="panel alerts" id="alertsPanel" style="display:none">
+      <div id="alertsToggle" style="cursor:pointer;display:flex;align-items:center;gap:10px">
+        <span id="alertsCaret" style="color:var(--muted);font-size:13px">▸</span>
+        <h3 style="margin:0">Observaciones sobre los datos (<span id="alertsCount">0</span>)</h3>
+        <span style="color:var(--muted);font-size:13.5px;margin-left:6px">— opcional, no afecta el funcionamiento</span>
+      </div>
+      <ul id="alertsList" style="display:none"></ul>
+    </div>
+
   </div>
-
-  <div class="banner err" id="errBanner"></div>
-  <div class="banner warn" id="demoBanner"></div>
-
-  <hr class="div" />
-
-  <!-- KPIs -->
-  <div class="kpis">
-    <div class="kpi total"><div class="label">Cargas registradas</div><div class="num" id="kTotal">0</div><div class="foot" id="kTotalFoot">—</div></div>
-    <div class="kpi activas"><div class="label">Cargas activas</div><div class="num" id="kActivas">0</div><div class="foot">No recibidas aún</div></div>
-    <div class="kpi transito"><div class="label">En tránsito</div><div class="num" id="kTransito">0</div><div class="foot" id="kTransitoFoot">—</div></div>
-    <div class="kpi incomp"><div class="label">Expedientes incompletos</div><div class="num" id="kIncomp">0</div><div class="foot" id="kIncompFoot">—</div></div>
-  </div>
-
-  <!-- PIPELINE -->
-  <div class="panel" style="margin-top:18px">
-    <h3>Pipeline documental</h3>
-    <p class="p-sub">Cargas que ya tienen cada documento. Haz clic en una etapa para filtrar las que <b>todavía no lo tienen</b>.</p>
-    <div class="pipe" id="pipe"></div>
-  </div>
-
-  <!-- FILTROS -->
-  <div class="panel" style="margin-top:18px">
-    <h3>Filtros</h3>
-    <div class="filters">
-      <div class="fld"><label>Estado</label><select id="fEstado"><option value="">Todos</option></select></div>
-      <div class="fld"><label>Proveedor</label><select id="fProv"><option value="">Todos</option></select></div>
-      <div class="fld"><label>Agente aduanal</label><select id="fAgente"><option value="">Todos</option></select></div>
-      <div class="fld grow"><label>Buscar (proveedor, PI, invoice, BL, contenedor)</label><input type="text" id="fSearch" placeholder="Escribe para filtrar…" /></div>
-      <span class="clear" id="clearFilters">Limpiar filtros</span>
-    </div>
-  </div>
-
-  <!-- CHARTS -->
-  <div class="charts">
-    <div class="panel">
-      <h3>Distribución por estado</h3>
-      <p class="p-sub">Proporción de cargas según su etapa logística</p>
-      <div class="chart-box"><canvas id="chartEstado"></canvas></div>
-    </div>
-    <div class="panel">
-      <h3>Cargas por proveedor</h3>
-      <p class="p-sub">Top 10 por cantidad de cargas</p>
-      <div class="chart-box"><canvas id="chartProv"></canvas></div>
-    </div>
-    <div class="panel">
-      <h3>Evolución mensual</h3>
-      <p class="p-sub">Cantidad de cargas por mes (según Fecha PI/INV)</p>
-      <div class="chart-box"><canvas id="chartMes"></canvas></div>
-    </div>
-    <div class="panel">
-      <h3>Completitud del expediente</h3>
-      <p class="p-sub">Etapas registradas vs. sin registrar en cada carga</p>
-      <div class="chart-box"><canvas id="chartPipe"></canvas></div>
-    </div>
-  </div>
-
-  <!-- TABLA -->
-  <div class="panel tbl-wrap">
-    <h3>Detalle de cargas (<span id="tCount">0</span>)</h3>
-    <p class="p-sub">Clic en una fila para desplegar la línea de tiempo completa.</p>
-    <div class="legend">
-      <span><a class="step ok lnk" style="pointer-events:none">INV</a> <b>clic abre el documento en Drive</b></span>
-      <span><span class="step ok">INV</span> registrado, sin link en la celda</span>
-      <span><span class="step">INV</span> pendiente</span>
-      <span><span class="step late">INV</span> falta y ya debería estar</span>
-      <span><span class="step na">RFQ</span> columna no creada en la hoja</span>
-    </div>
-    <div style="overflow-x:auto">
-      <table>
-        <thead><tr>
-          <th>#</th><th>Proveedor</th><th>PI No</th>
-          <th>Ruta documental</th><th>Estado</th><th>Contenedor</th><th>Agente aduanal</th>
-        </tr></thead>
-        <tbody id="tbody"><tr><td colspan="7" class="msg">Cargando datos…</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- ALERTAS DE CALIDAD -->
-  <div class="panel alerts" id="alertsPanel" style="display:none">
-    <div id="alertsToggle" style="cursor:pointer;display:flex;align-items:center;gap:10px">
-      <span id="alertsCaret" style="color:var(--muted);font-size:13px">▸</span>
-      <h3 style="margin:0">Observaciones sobre los datos (<span id="alertsCount">0</span>)</h3>
-      <span style="color:var(--muted);font-size:13.5px;margin-left:6px">— opcional, no afecta el funcionamiento</span>
-    </div>
-    <ul id="alertsList" style="display:none"></ul>
-  </div>
-
-</div>
 
   <!-- MODAL DE SUBIDA -->
-  <div id="uploadModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.6);z-index:999;align-items:center;justify-content:center;backdrop-filter:blur(2px)">
-    <div style="background:var(--card);border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:0 10px 25px rgba(0,0,0,0.1);position:relative;border:1px solid var(--line)" onclick="event.stopPropagation()">
-      <button id="modalCloseX" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;line-height:1;cursor:pointer;color:var(--muted);padding:0;">&times;</button>
+  <div id="uploadModal"
+    style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.6);z-index:999;align-items:center;justify-content:center;backdrop-filter:blur(2px)">
+    <div
+      style="background:var(--card);border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:0 10px 25px rgba(0,0,0,0.1);position:relative;border:1px solid var(--line)"
+      onclick="event.stopPropagation()">
+      <button id="modalCloseX"
+        style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;line-height:1;cursor:pointer;color:var(--muted);padding:0;">&times;</button>
       <h3 style="margin:0 0 16px;font-size:19px">Subir documento</h3>
-      
-      <div id="modalAlert" style="display:none; font-size:13px; font-weight:600; padding:10px 14px; border-radius:9px; margin-bottom:16px;"></div>
-      
-      <div style="margin-bottom:18px;font-size:14px;background:var(--bg);padding:12px;border-radius:9px;border:1px solid var(--line);">
-        <div><span style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Carga:</span> <span id="modalCargaText">Ejemplo de Proveedor - PI-1234</span></div>
-        <div style="margin-top:6px"><span style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Etapa:</span> <span id="modalEtapaText">Invoice</span></div>
+
+      <div id="modalAlert"
+        style="display:none; font-size:13px; font-weight:600; padding:10px 14px; border-radius:9px; margin-bottom:16px;">
       </div>
-      
+
+      <div
+        style="margin-bottom:18px;font-size:14px;background:var(--bg);padding:12px;border-radius:9px;border:1px solid var(--line);">
+        <div><span style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Carga:</span> <span
+            id="modalCargaText">Ejemplo de Proveedor - PI-1234</span></div>
+        <div style="margin-top:6px"><span
+            style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Etapa:</span> <span
+            id="modalEtapaText">Invoice</span></div>
+      </div>
+
       <div class="fld" style="margin-bottom:16px">
         <label for="modalDocNum">Número de documento</label>
         <input type="text" id="modalDocNum" placeholder="Ej. INV-2023-001" />
       </div>
-      
+
       <div class="fld" style="margin-bottom:24px">
         <label for="modalDocFile">Archivo</label>
         <input type="file" id="modalDocFile" accept=".pdf,.jpg,.jpeg,.png" style="padding:6px;background:#fff" />
       </div>
-      
+
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button id="modalCancel" class="btn btn-ghost">Cancelar</button>
         <button id="modalSubmit" class="btn btn-primary">Subir</button>
@@ -299,891 +1020,904 @@
     </div>
   </div>
 
-<script>
-/* ============================================================
-   CONFIG — cambia estas dos líneas si mueves la hoja
-   ============================================================ */
-const SHEET_ID   = "1g1MO7BAW4GwyM74vmR3s00_j8DEFh_QMZ2kUiIPMZ00";  // solo para el botón "abrir hoja"
-const SHEET_NAME = "CONTROL DE CARGAS";
-const SHEET_URL  = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
-const UPLOAD_TOKEN = "netso-pruebas-7k3m9x2q8f";
-const UPLOAD_URL = "https://script.google.com/macros/s/AKfycbxunQr7hdyv2-pU95MeQl5ZsnlGJtlpbNa8Zqc7XxkAO_USJ5SjN3XUMLHgHRarnCK1jg/exec";
+  <script>
+    /* ============================================================
+       CONFIG — cambia estas dos líneas si mueves la hoja
+       ============================================================ */
+    const SHEET_ID = "1g1MO7BAW4GwyM74vmR3s00_j8DEFh_QMZ2kUiIPMZ00";  // solo para el botón "abrir hoja"
+    const SHEET_NAME = "CONTROL DE CARGAS";
+    const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
+    const UPLOAD_TOKEN = "netso-prod-4t9w2k7m3x8q";
+    const UPLOAD_URL = "https://script.google.com/macros/s/AKfycbwI93pWOThAv08ZuvGWOQdDvkslhp4lDGbDrPR2fBHTcb46mCrzUExiVN05iUWlP4z4/exec";
 
-/* URL de la hoja PUBLICADA (Archivo → Compartir → Publicar en la Web).
-   Ojo: este ID (2PACX-…) es distinto al ID del documento. Si republicas la
-   hoja, Google genera uno nuevo y hay que actualizar esta línea. */
-const PUB_ID = "2PACX-1vTs9SHDjBC5-S3uhxlOqSe_1to8A1Tt8kO0GjPP0hkIQ_0zaCEklCMnRb_tjiTxj7w9hRqx7DfZjk9A";
-const PUB_GID = "0";
-/* pubhtml conserva los hipervínculos pegados a cada celda; el CSV los pierde.
-   Por eso se intenta primero el HTML y solo se cae al CSV si falla. */
-function htmlUrl(){
-  return `https://docs.google.com/spreadsheets/d/e/${PUB_ID}/pubhtml/sheet?headers=false&gid=${PUB_GID}&t=${Date.now()}`;
-}
-function csvUrl(){
-  return `https://docs.google.com/spreadsheets/d/e/${PUB_ID}/pub?gid=${PUB_GID}&single=true&output=csv&t=${Date.now()}`;
-}
-/* Rutas servidas por el proxy de Netlify (archivo _redirects). Al ser del mismo
-   origen que la página, el navegador no aplica CORS y la lectura nunca se bloquea.
-   Si el dashboard se abre fuera de Netlify estas rutas fallan y se usa la URL
-   directa de Google como respaldo. */
-const PROXY_HTML="/gs-html";
-const PROXY_CSV ="/gs-csv";
-
-/* ============================================================
-   LAS 7 ETAPAS
-   doc:true  -> es un documento (puede tener número + URL)
-   doc:false -> es un hito de fecha (ETD / ETA)
-   ============================================================ */
-const STAGES = [
-  {key:"rfq", short:"RFQ", name:"RFQ",          doc:true,  numCols:["RFQ No","RFQ","N RFQ","Nro RFQ"],                 urlCols:["RFQ URL","Link RFQ","URL RFQ"],                         dateCols:["Fecha RFQ"]},
-  {key:"pi",  short:"PI",  name:"Proforma (PI)",doc:true,  numCols:["PI No","PI","Proforma"],                          urlCols:["PI URL","Link PI","URL PI"],                            dateCols:["Fecha PI"]},
-  {key:"inv", short:"INV", name:"Invoice",      doc:true,  numCols:["Invoice No","Link Invoice","Invoice","Factura"],  urlCols:["Invoice URL","URL Invoice","Link Invoice URL"],          dateCols:["Fecha Invoice","Fecha INV"]},
-  {key:"pl",  short:"PL",  name:"Packing List", doc:true,  numCols:["PL No","Link Packing List","Packing List","PL"],  urlCols:["PL URL","URL Packing List","Link Packing List URL"],    dateCols:["Fecha PL","Fecha Packing List"]},
-  {key:"etd", short:"ETD", name:"ETD (zarpe)",  doc:false, numCols:[],                                                 urlCols:[],                                                        dateCols:["ETD"]},
-  {key:"bl",  short:"BL",  name:"Bill of Lading",doc:true, numCols:["BL No","BL","B/L"],                               urlCols:["BL URL","Link BL","URL BL"],                            dateCols:["Fecha BL"]},
-  {key:"eta", short:"ETA", name:"ETA (arribo)", doc:false, numCols:[],                                                 urlCols:[],                                                        dateCols:["ETA"]},
-];
-
-/* Qué DOCUMENTOS ya deberían existir según el estado logístico.
-   Esto es lo que convierte el semáforo en algo útil: un BL faltante
-   solo es problema si la carga ya zarpó.
-   ETD y ETA quedan fuera a propósito: son fechas que informa la naviera,
-   no documentos que alguien tenga que conseguir, así que nunca se marcan
-   como faltantes ni pintan rojo. */
-/* El RFQ queda fuera a propósito. Existe como columna y se muestra en el
-   recorrido, pero no cuenta como faltante: las 85 cargas históricas nunca
-   tuvieron RFQ y exigirlo retroactivamente pintaría todo de rojo sin que eso
-   signifique nada. Cuando el RFQ sea parte real del proceso, basta con
-   agregar "rfq" a las cuatro listas de abajo. */
-const REQUIRED = {
-  produccion: ["pi"],
-  camino:     ["pi","inv","pl","bl"],
-  nacion:     ["pi","inv","pl","bl"],
-  recibido:   ["pi","inv","pl","bl"],
-  indef:      [],
-  na:         [],
-};
-const IS_DOC = k => { const s=STAGES.find(x=>x.key===k); return !!(s&&s.doc); };
-/* El recorrido visible es solo de documentos. ETD y ETA se siguen leyendo de la
-   hoja (STAGES los incluye para el parseo) pero se muestran como datos abajo,
-   junto a naviera y contenedor, no como etapas con un archivo que abrir. */
-const TRACK = STAGES.filter(s=>s.doc);
-const ESTADO_LABEL = {
-  produccion:"En producción", camino:"En camino", nacion:"Proc. Nacionalización",
-  recibido:"Recibido", indef:"Indefinido", na:"Sin estado",
-};
-
-/* ====== ESTADO GLOBAL ====== */
-let ROWS = [];
-let PIPE_FILTER = null;           // etapa faltante seleccionada
-let OPEN_ROW = null;              // fila expandida
-let DATA_ALERTS = [];
-/* Etapas que realmente existen como columna en la hoja. Una etapa que todavía
-   no está creada (ej. RFQ) no puede contar como documento faltante: si no,
-   el semáforo marca todo en rojo y deja de significar algo. */
-let STAGE_AVAILABLE = new Set(STAGES.map(s=>s.key));
-let charts = {estado:null, prov:null, mes:null, pipe:null};
-
-/* ============================================================
-   UTILIDADES
-   ============================================================ */
-function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-
-function isUrl(v){ return /^https?:\/\//i.test(String(v||"").trim()); }
-
-/* Fechas dd/mm/yyyy + seriales de Excel. Descarta el 31/10/1899 (celda vacía leída como fecha cero). */
-function pdate(v){
-  if(v==null) return null;
-  if(v instanceof Date) return isNaN(v)?null:v;
-  let s=String(v).trim();
-  if(!s) return null;
-  if(/^\d+(\.\d+)?$/.test(s)){
-    const n=+s;
-    if(n>20000 && n<70000){
-      const d=new Date(Date.UTC(1899,11,30)+n*86400000);
-      return isNaN(d)?null:d;
+    /* URL de la hoja PUBLICADA (Archivo → Compartir → Publicar en la Web).
+       Ojo: este ID (2PACX-…) es distinto al ID del documento. Si republicas la
+       hoja, Google genera uno nuevo y hay que actualizar esta línea. */
+    const PUB_ID = "2PACX-1vTs9SHDjBC5-S3uhxlOqSe_1to8A1Tt8kO0GjPP0hkIQ_0zaCEklCMnRb_tjiTxj7w9hRqx7DfZjk9A";
+    const PUB_GID = "0";
+    /* pubhtml conserva los hipervínculos pegados a cada celda; el CSV los pierde.
+       Por eso se intenta primero el HTML y solo se cae al CSV si falla. */
+    function htmlUrl() {
+      return `https://docs.google.com/spreadsheets/d/e/${PUB_ID}/pubhtml/sheet?headers=false&gid=${PUB_GID}&t=${Date.now()}`;
     }
-    return null;
-  }
-  const m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
-  if(m){
-    let y=+m[3]; if(y<100) y+=2000;
-    const d=new Date(y,+m[2]-1,+m[1]);
-    if(isNaN(d)||d.getFullYear()<1950) return null;
-    return d;
-  }
-  const d=new Date(s);
-  if(isNaN(d)||d.getFullYear()<1950) return null;
-  return d;
-}
-function fmtDate(d){
-  if(!d) return "";
-  return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();
-}
-
-/* Normaliza el Status de la hoja a una clave interna.
-   Tolera los espacios sobrantes ("En camino ") y las variantes de tildes. */
-function estadoKey(v){
-  const t=String(v||"").trim().toLowerCase();
-  if(!t) return "na";
-  if(t.includes("recib"))                    return "recibido";
-  if(t.includes("camino"))                   return "camino";
-  if(t.includes("nacionaliz"))               return "nacion";
-  if(t.includes("produc"))                   return "produccion";
-  if(t.includes("indefin"))                  return "indef";
-  return "na";
-}
-
-/* ============================================================
-   PARSER
-   ============================================================ */
-function parseCSV(text){
-  const rows=[]; let row=[], field="", q=false;
-  for(let i=0;i<text.length;i++){
-    const c=text[i];
-    if(q){
-      if(c==='"'){ if(text[i+1]==='"'){field+='"';i++;} else q=false; }
-      else field+=c;
-    } else {
-      if(c==='"') q=true;
-      else if(c===','){ row.push(field); field=""; }
-      else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=""; }
-      else if(c==='\r'){ /* skip */ }
-      else field+=c;
+    function csvUrl() {
+      return `https://docs.google.com/spreadsheets/d/e/${PUB_ID}/pub?gid=${PUB_GID}&single=true&output=csv&t=${Date.now()}`;
     }
-  }
-  if(field.length||row.length){ row.push(field); rows.push(row); }
-  return rows;
-}
+    /* Rutas servidas por el proxy de Netlify (archivo _redirects). Al ser del mismo
+       origen que la página, el navegador no aplica CORS y la lectura nunca se bloquea.
+       Si el dashboard se abre fuera de Netlify estas rutas fallan y se usa la URL
+       directa de Google como respaldo. */
+    const PROXY_HTML = "/gs-html";
+    const PROXY_CSV = "/gs-csv";
 
-/* Google envuelve los links de celda en un redirector:
-   https://www.google.com/url?q=<URL_REAL>&sa=D&…  → hay que desenvolverlo */
-function unwrapGoogle(href){
-  if(!href) return "";
-  try{
-    const u=new URL(href, "https://docs.google.com");
-    if(u.hostname==="www.google.com" && u.pathname==="/url"){
-      const q=u.searchParams.get("q");
-      if(q) return q;
-    }
-    return u.href;
-  }catch(e){ return String(href); }
-}
+    /* ============================================================
+       LAS 7 ETAPAS
+       doc:true  -> es un documento (puede tener número + URL)
+       doc:false -> es un hito de fecha (ETD / ETA)
+       ============================================================ */
+    const STAGES = [
+      { key: "rfq", short: "RFQ", name: "RFQ", doc: true, numCols: ["RFQ No", "RFQ", "N RFQ", "Nro RFQ"], urlCols: ["RFQ URL", "Link RFQ", "URL RFQ"], dateCols: ["Fecha RFQ"] },
+      { key: "pi", short: "PI", name: "Proforma (PI)", doc: true, numCols: ["PI No", "PI", "Proforma"], urlCols: ["PI URL", "Link PI", "URL PI"], dateCols: ["Fecha PI"] },
+      { key: "inv", short: "INV", name: "Invoice", doc: true, numCols: ["Invoice No", "Link Invoice", "Invoice", "Factura"], urlCols: ["Invoice URL", "URL Invoice", "Link Invoice URL"], dateCols: ["Fecha Invoice", "Fecha INV"] },
+      { key: "pl", short: "PL", name: "Packing List", doc: true, numCols: ["PL No", "Link Packing List", "Packing List", "PL"], urlCols: ["PL URL", "URL Packing List", "Link Packing List URL"], dateCols: ["Fecha PL", "Fecha Packing List"] },
+      { key: "etd", short: "ETD", name: "ETD (zarpe)", doc: false, numCols: [], urlCols: [], dateCols: ["ETD"] },
+      { key: "bl", short: "BL", name: "Bill of Lading", doc: true, numCols: ["BL No", "BL", "B/L"], urlCols: ["BL URL", "Link BL", "URL BL"], dateCols: ["Fecha BL"] },
+      { key: "eta", short: "ETA", name: "ETA (arribo)", doc: false, numCols: [], urlCols: [], dateCols: ["ETA"] },
+    ];
 
-/* Lee el HTML publicado y devuelve el texto Y el hipervínculo de cada celda.
-   Esto es lo que permite que el clic abra el documento en Drive sin tener
-   que crear columnas de URL a mano. */
-function parsePubHtml(html){
-  const doc=new DOMParser().parseFromString(html,"text/html");
-  const tables=[...doc.querySelectorAll("table")];
-  if(!tables.length) throw new Error("el HTML publicado no trae ninguna tabla");
-  const table=tables.slice().sort((a,b)=>b.rows.length-a.rows.length)[0];
-  const matrix=[], links=[];
-  [...table.rows].forEach(tr=>{
-    const cells=[...tr.children].filter(c=>c.tagName==="TD");
-    if(!cells.length) return;                  // fila de encabezados A/B/C… de Google
-    const mrow=[], lrow=[];
-    cells.forEach(td=>{
-      const span=Math.max(1,parseInt(td.getAttribute("colspan")||"1",10));
-      const a=td.querySelector("a[href]");
-      mrow.push((td.textContent||"").trim());
-      lrow.push(a?unwrapGoogle(a.getAttribute("href")):"");
-      for(let k=1;k<span;k++){ mrow.push(""); lrow.push(""); }
-    });
-    matrix.push(mrow); links.push(lrow);
-  });
-  if(!matrix.length) throw new Error("la tabla publicada vino vacía");
-  return {matrix, links};
-}
-
-/* Localiza la fila de encabezados: la que tenga PI No / Supplier / Status */
-function findHeader(matrix){
-  const want=["pi no","supplier","status","proveedor","estado"];
-  for(let i=0;i<Math.min(matrix.length,25);i++){
-    const cells=(matrix[i]||[]).map(c=>String(c||"").trim().toLowerCase());
-    const hits=want.filter(w=>cells.includes(w)).length;
-    if(hits>=2) return i;
-  }
-  return 0;
-}
-
-function makeFinder(H){
-  const norm = s => String(s||"").trim().toLowerCase().replace(/\s+/g," ");
-  const HN = H.map(norm);
-  return function(names){
-    for(const n of names){                      // 1) match exacto
-      const i=HN.indexOf(norm(n));
-      if(i>=0) return i;
-    }
-    for(const n of names){                      // 2) match parcial
-      const i=HN.findIndex(h=>h && h.includes(norm(n)));
-      if(i>=0) return i;
-    }
-    return -1;
-  };
-}
-
-function calcRowStatus(row){
-  row.missing = REQUIRED[row.estado].filter(k=>IS_DOC(k) && STAGE_AVAILABLE.has(k) && !row.stages[k].has);
-  row.sem = row.estado==="indef"||row.estado==="na" ? "r"
-          : row.missing.length===0 ? "g"
-          : row.missing.length===1 ? "a" : "r";
-}
-
-function normalize(matrix, links){
-  const hIdx=findHeader(matrix);
-  const H=(matrix[hIdx]||[]).map(c=>String(c||"").trim());
-  const find=makeFinder(H);
-  const get=(r,i)=> i>=0 ? String(r[i]==null?"":r[i]).trim() : "";
-
-  const col={
-    fecha:  find(["Fecha PI/INV","Fecha PI","Fecha"]),
-    status: find(["Status","Estado"]),
-    prov:   find(["Supplier","Proveedor"]),
-    cont:   find(["Container ID","Contenedor","Container"]),
-    agente: find(["Agente aduanal","Agente Aduanal","Agente"]),
-    id:     find(["ID"]),
-  };
-  // Índices por etapa
-  const sIdx={};
-  STAGE_AVAILABLE=new Set();
-  STAGES.forEach(st=>{
-    const idx={
-      num:  st.numCols.length  ? find(st.numCols)  : -1,
-      url:  st.urlCols.length  ? find(st.urlCols)  : -1,
-      date: st.dateCols.length ? find(st.dateCols) : -1,
+    /* Qué DOCUMENTOS ya deberían existir según el estado logístico.
+       Esto es lo que convierte el semáforo en algo útil: un BL faltante
+       solo es problema si la carga ya zarpó.
+       ETD y ETA quedan fuera a propósito: son fechas que informa la naviera,
+       no documentos que alguien tenga que conseguir, así que nunca se marcan
+       como faltantes ni pintan rojo. */
+    /* El RFQ queda fuera a propósito. Existe como columna y se muestra en el
+       recorrido, pero no cuenta como faltante: las 85 cargas históricas nunca
+       tuvieron RFQ y exigirlo retroactivamente pintaría todo de rojo sin que eso
+       signifique nada. Cuando el RFQ sea parte real del proceso, basta con
+       agregar "rfq" a las cuatro listas de abajo. */
+    const REQUIRED = {
+      produccion: ["pi"],
+      camino: ["pi", "inv", "pl", "bl"],
+      nacion: ["pi", "inv", "pl", "bl"],
+      recibido: ["pi", "inv", "pl", "bl"],
+      indef: [],
+      na: [],
     };
-    sIdx[st.key]=idx;
-    if(idx.num>=0 || idx.url>=0 || idx.date>=0) STAGE_AVAILABLE.add(st.key);
-  });
+    const IS_DOC = k => { const s = STAGES.find(x => x.key === k); return !!(s && s.doc); };
+    /* El recorrido visible es solo de documentos. ETD y ETA se siguen leyendo de la
+       hoja (STAGES los incluye para el parseo) pero se muestran como datos abajo,
+       junto a naviera y contenedor, no como etapas con un archivo que abrir. */
+    const TRACK = STAGES.filter(s => s.doc);
+    const ESTADO_LABEL = {
+      produccion: "En producción", camino: "En camino", nacion: "Proc. Nacionalización",
+      recibido: "Recibido", indef: "Indefinido", na: "Sin estado",
+    };
 
-  const out=[];
-  const alerts={n1899:0, sinEstado:0, sinPI:0, trailing:new Set()};
-  let linkCount=0;
+    /* ====== ESTADO GLOBAL ====== */
+    let ROWS = [];
+    let PIPE_FILTER = null;           // etapa faltante seleccionada
+    let OPEN_ROW = null;              // fila expandida
+    let DATA_ALERTS = [];
+    /* Etapas que realmente existen como columna en la hoja. Una etapa que todavía
+       no está creada (ej. RFQ) no puede contar como documento faltante: si no,
+       el semáforo marca todo en rojo y deja de significar algo. */
+    let STAGE_AVAILABLE = new Set(STAGES.map(s => s.key));
+    let charts = { estado: null, prov: null, mes: null, pipe: null };
 
-  for(let i=hIdx+1;i<matrix.length;i++){
-    const r=matrix[i]||[];
-    const L=(links&&links[i])?links[i]:null;
-    const getLink=idx => (L && idx>=0 && L[idx]) ? String(L[idx]).trim() : "";
-    const prov=get(r,col.prov);
-    const rawStatus=col.status>=0 ? String(r[col.status]==null?"":r[col.status]) : "";
-    const anyDoc = STAGES.some(st=>sIdx[st.key].num>=0 && get(r,sIdx[st.key].num));
-    // Fila real = tiene proveedor o algún documento
-    if(!prov && !anyDoc) continue;
+    /* ============================================================
+       UTILIDADES
+       ============================================================ */
+    function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
-    if(rawStatus && rawStatus!==rawStatus.trim()) alerts.trailing.add("Status: «"+rawStatus+"»");
-    const rawProv = col.prov>=0 ? String(r[col.prov]==null?"":r[col.prov]) : "";
-    if(rawProv && rawProv!==rawProv.trim()) alerts.trailing.add("Proveedor: «"+rawProv+"»");
+    function isUrl(v) { return /^https?:\/\//i.test(String(v || "").trim()); }
 
-    const est=estadoKey(rawStatus);
-    if(est==="na") alerts.sinEstado++;
+    /* Fechas dd/mm/yyyy + seriales de Excel. Descarta el 31/10/1899 (celda vacía leída como fecha cero). */
+    function pdate(v) {
+      if (v == null) return null;
+      if (v instanceof Date) return isNaN(v) ? null : v;
+      let s = String(v).trim();
+      if (!s) return null;
+      if (/^\d+(\.\d+)?$/.test(s)) {
+        const n = +s;
+        if (n > 20000 && n < 70000) {
+          const d = new Date(Date.UTC(1899, 11, 30) + n * 86400000);
+          return isNaN(d) ? null : d;
+        }
+        return null;
+      }
+      const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+      if (m) {
+        let y = +m[3]; if (y < 100) y += 2000;
+        const d = new Date(y, +m[2] - 1, +m[1]);
+        if (isNaN(d) || d.getFullYear() < 1950) return null;
+        return d;
+      }
+      const d = new Date(s);
+      if (isNaN(d) || d.getFullYear() < 1950) return null;
+      return d;
+    }
+    function fmtDate(d) {
+      if (!d) return "";
+      return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear();
+    }
 
-    const stages={};
-    STAGES.forEach(st=>{
-      const idx=sIdx[st.key];
-      const numV=get(r,idx.num);
-      const urlV=get(r,idx.url);
-      const rawDate = idx.date>=0 ? String(r[idx.date]==null?"":r[idx.date]).trim() : "";
-      if(/^31[\/\-.]10[\/\-.]1899$/.test(rawDate)) alerts.n1899++;
-      const dt=pdate(rawDate);
-      /* Prioridad para encontrar el link, de más fiable a menos:
-         1. hipervínculo pegado a la celda del número (lo que ya usas en el Sheet)
-         2. hipervínculo pegado a la celda de la columna URL
-         3. columna URL dedicada con la URL como texto
-         4. el propio número escrito como https://…                            */
-      const url = getLink(idx.num) || getLink(idx.url)
-                || (isUrl(urlV) ? urlV : (isUrl(numV) ? numV : ""));
-      if(url) linkCount++;
-      const label = isUrl(numV) ? "Ver documento" : numV;
-      stages[st.key]={
-        has: !!(label || url || dt),
-        label, url, date: dt,
+    /* Normaliza el Status de la hoja a una clave interna.
+       Tolera los espacios sobrantes ("En camino ") y las variantes de tildes. */
+    function estadoKey(v) {
+      const t = String(v || "").trim().toLowerCase();
+      if (!t) return "na";
+      if (t.includes("recib")) return "recibido";
+      if (t.includes("camino")) return "camino";
+      if (t.includes("nacionaliz")) return "nacion";
+      if (t.includes("produc")) return "produccion";
+      if (t.includes("indefin")) return "indef";
+      return "na";
+    }
+
+    /* ============================================================
+       PARSER
+       ============================================================ */
+    function parseCSV(text) {
+      const rows = []; let row = [], field = "", q = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (q) {
+          if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; }
+          else field += c;
+        } else {
+          if (c === '"') q = true;
+          else if (c === ',') { row.push(field); field = ""; }
+          else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ""; }
+          else if (c === '\r') { /* skip */ }
+          else field += c;
+        }
+      }
+      if (field.length || row.length) { row.push(field); rows.push(row); }
+      return rows;
+    }
+
+    /* Google envuelve los links de celda en un redirector:
+       https://www.google.com/url?q=<URL_REAL>&sa=D&…  → hay que desenvolverlo */
+    function unwrapGoogle(href) {
+      if (!href) return "";
+      try {
+        const u = new URL(href, "https://docs.google.com");
+        if (u.hostname === "www.google.com" && u.pathname === "/url") {
+          const q = u.searchParams.get("q");
+          if (q) return q;
+        }
+        return u.href;
+      } catch (e) { return String(href); }
+    }
+
+    /* Lee el HTML publicado y devuelve el texto Y el hipervínculo de cada celda.
+       Esto es lo que permite que el clic abra el documento en Drive sin tener
+       que crear columnas de URL a mano. */
+    function parsePubHtml(html) {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const tables = [...doc.querySelectorAll("table")];
+      if (!tables.length) throw new Error("el HTML publicado no trae ninguna tabla");
+      const table = tables.slice().sort((a, b) => b.rows.length - a.rows.length)[0];
+      const matrix = [], links = [];
+      [...table.rows].forEach(tr => {
+        const cells = [...tr.children].filter(c => c.tagName === "TD");
+        if (!cells.length) return;                  // fila de encabezados A/B/C… de Google
+        const mrow = [], lrow = [];
+        cells.forEach(td => {
+          const span = Math.max(1, parseInt(td.getAttribute("colspan") || "1", 10));
+          const a = td.querySelector("a[href]");
+          mrow.push((td.textContent || "").trim());
+          lrow.push(a ? unwrapGoogle(a.getAttribute("href")) : "");
+          for (let k = 1; k < span; k++) { mrow.push(""); lrow.push(""); }
+        });
+        matrix.push(mrow); links.push(lrow);
+      });
+      if (!matrix.length) throw new Error("la tabla publicada vino vacía");
+      return { matrix, links };
+    }
+
+    /* Localiza la fila de encabezados: la que tenga PI No / Supplier / Status */
+    function findHeader(matrix) {
+      const want = ["pi no", "supplier", "status", "proveedor", "estado"];
+      for (let i = 0; i < Math.min(matrix.length, 25); i++) {
+        const cells = (matrix[i] || []).map(c => String(c || "").trim().toLowerCase());
+        const hits = want.filter(w => cells.includes(w)).length;
+        if (hits >= 2) return i;
+      }
+      return 0;
+    }
+
+    function makeFinder(H) {
+      const norm = s => String(s || "").trim().toLowerCase().replace(/\s+/g, " ");
+      const HN = H.map(norm);
+      return function (names) {
+        for (const n of names) {                      // 1) match exacto
+          const i = HN.indexOf(norm(n));
+          if (i >= 0) return i;
+        }
+        for (const n of names) {                      // 2) match parcial
+          const i = HN.findIndex(h => h && h.includes(norm(n)));
+          if (i >= 0) return i;
+        }
+        return -1;
       };
-    });
+    }
 
-    if(!stages.pi.has) alerts.sinPI++;
+    function calcRowStatus(row) {
+      row.missing = REQUIRED[row.estado].filter(k => IS_DOC(k) && STAGE_AVAILABLE.has(k) && !row.stages[k].has);
+      row.sem = row.estado === "indef" || row.estado === "na" ? "r"
+        : row.missing.length === 0 ? "g"
+          : row.missing.length === 1 ? "a" : "r";
+    }
 
-    const row={
-      i: out.length+1,
-      fecha:  pdate(get(r,col.fecha)),
-      estado: est,
-      estadoRaw: rawStatus.trim(),
-      prov:   prov.replace(/\s+/g," ").trim(),
-      cont:   get(r,col.cont),
-      contUrl:getLink(col.cont),        // tracking de contenedor (searates) si está enlazado
-      agente: get(r,col.agente),
-      id:     get(r,col.id),   // identificador estable de la Fase 0
-      stages,
-    };
-    // solo documentos: ETD/ETA nunca cuentan como faltante
-    calcRowStatus(row);
-    out.push(row);
-  }
+    function normalize(matrix, links) {
+      const hIdx = findHeader(matrix);
+      const H = (matrix[hIdx] || []).map(c => String(c || "").trim());
+      const find = makeFinder(H);
+      const get = (r, i) => i >= 0 ? String(r[i] == null ? "" : r[i]).trim() : "";
 
-  DATA_ALERTS=[];
-  if(alerts.n1899)      DATA_ALERTS.push(`<b>${alerts.n1899}</b> celdas de fecha con el valor <b>31/10/1899</b> — es una celda vacía leída como fecha cero. Bórralas para que no ensucien los cálculos.`);
-  if(alerts.sinEstado)  DATA_ALERTS.push(`<b>${alerts.sinEstado}</b> cargas sin <b>Status</b>. Aparecen en rojo porque no se puede saber qué documentos deberían tener.`);
-  if(alerts.sinPI)      DATA_ALERTS.push(`<b>${alerts.sinPI}</b> cargas sin número de <b>PI</b>.`);
-  if(alerts.trailing.size) DATA_ALERTS.push(`Valores con espacios sobrantes que se cuentan como categorías distintas: ${[...alerts.trailing].slice(0,4).map(esc).join(", ")}. Pon <b>validación de datos</b> en esas columnas.`);
-  const sinEtapa = STAGES.filter(st=>!STAGE_AVAILABLE.has(st.key));
-  if(sinEtapa.length) DATA_ALERTS.push(`La hoja no tiene ninguna columna para la etapa <b>${sinEtapa.map(s=>s.name).join(", ")}</b>. Esa etapa aparece atenuada y <b>no</b> cuenta como documento faltante. Para activarla agrega la columna <b>${sinEtapa.map(s=>s.numCols[0]||s.dateCols[0]).join(", ")}</b>.`);
-  if(!linkCount){
-    DATA_ALERTS.push(`<b>Ningún documento tiene link.</b> Si los abriste desde el CSV o desde un Excel subido, los
+      const col = {
+        fecha: find(["Fecha PI/INV", "Fecha PI", "Fecha"]),
+        status: find(["Status", "Estado"]),
+        prov: find(["Supplier", "Proveedor"]),
+        cont: find(["Container ID", "Contenedor", "Container"]),
+        agente: find(["Agente aduanal", "Agente Aduanal", "Agente"]),
+        id: find(["ID"]),
+      };
+      // Índices por etapa
+      const sIdx = {};
+      STAGE_AVAILABLE = new Set();
+      STAGES.forEach(st => {
+        const idx = {
+          num: st.numCols.length ? find(st.numCols) : -1,
+          url: st.urlCols.length ? find(st.urlCols) : -1,
+          date: st.dateCols.length ? find(st.dateCols) : -1,
+        };
+        sIdx[st.key] = idx;
+        if (idx.num >= 0 || idx.url >= 0 || idx.date >= 0) STAGE_AVAILABLE.add(st.key);
+      });
+
+      const out = [];
+      const alerts = { n1899: 0, sinEstado: 0, sinPI: 0, trailing: new Set() };
+      let linkCount = 0;
+
+      for (let i = hIdx + 1; i < matrix.length; i++) {
+        const r = matrix[i] || [];
+        const L = (links && links[i]) ? links[i] : null;
+        const getLink = idx => (L && idx >= 0 && L[idx]) ? String(L[idx]).trim() : "";
+        const prov = get(r, col.prov);
+        const rawStatus = col.status >= 0 ? String(r[col.status] == null ? "" : r[col.status]) : "";
+        const anyDoc = STAGES.some(st => sIdx[st.key].num >= 0 && get(r, sIdx[st.key].num));
+        // Fila real = tiene proveedor o algún documento
+        if (!prov && !anyDoc) continue;
+
+        if (rawStatus && rawStatus !== rawStatus.trim()) alerts.trailing.add("Status: «" + rawStatus + "»");
+        const rawProv = col.prov >= 0 ? String(r[col.prov] == null ? "" : r[col.prov]) : "";
+        if (rawProv && rawProv !== rawProv.trim()) alerts.trailing.add("Proveedor: «" + rawProv + "»");
+
+        const est = estadoKey(rawStatus);
+        if (est === "na") alerts.sinEstado++;
+
+        const stages = {};
+        STAGES.forEach(st => {
+          const idx = sIdx[st.key];
+          const numV = get(r, idx.num);
+          const urlV = get(r, idx.url);
+          const rawDate = idx.date >= 0 ? String(r[idx.date] == null ? "" : r[idx.date]).trim() : "";
+          if (/^31[\/\-.]10[\/\-.]1899$/.test(rawDate)) alerts.n1899++;
+          const dt = pdate(rawDate);
+          /* Prioridad para encontrar el link, de más fiable a menos:
+             1. hipervínculo pegado a la celda del número (lo que ya usas en el Sheet)
+             2. hipervínculo pegado a la celda de la columna URL
+             3. columna URL dedicada con la URL como texto
+             4. el propio número escrito como https://…                            */
+          const url = getLink(idx.num) || getLink(idx.url)
+            || (isUrl(urlV) ? urlV : (isUrl(numV) ? numV : ""));
+          if (url) linkCount++;
+          const label = isUrl(numV) ? "Ver documento" : numV;
+          stages[st.key] = {
+            has: !!(label || url || dt),
+            label, url, date: dt,
+          };
+        });
+
+        if (!stages.pi.has) alerts.sinPI++;
+
+        const row = {
+          i: out.length + 1,
+          fecha: pdate(get(r, col.fecha)),
+          estado: est,
+          estadoRaw: rawStatus.trim(),
+          prov: prov.replace(/\s+/g, " ").trim(),
+          cont: get(r, col.cont),
+          contUrl: getLink(col.cont),        // tracking de contenedor (searates) si está enlazado
+          agente: get(r, col.agente),
+          id: get(r, col.id),   // identificador estable de la Fase 0
+          stages,
+        };
+        // solo documentos: ETD/ETA nunca cuentan como faltante
+        calcRowStatus(row);
+        out.push(row);
+      }
+
+      DATA_ALERTS = [];
+      if (alerts.n1899) DATA_ALERTS.push(`<b>${alerts.n1899}</b> celdas de fecha con el valor <b>31/10/1899</b> — es una celda vacía leída como fecha cero. Bórralas para que no ensucien los cálculos.`);
+      if (alerts.sinEstado) DATA_ALERTS.push(`<b>${alerts.sinEstado}</b> cargas sin <b>Status</b>. Aparecen en rojo porque no se puede saber qué documentos deberían tener.`);
+      if (alerts.sinPI) DATA_ALERTS.push(`<b>${alerts.sinPI}</b> cargas sin número de <b>PI</b>.`);
+      if (alerts.trailing.size) DATA_ALERTS.push(`Valores con espacios sobrantes que se cuentan como categorías distintas: ${[...alerts.trailing].slice(0, 4).map(esc).join(", ")}. Pon <b>validación de datos</b> en esas columnas.`);
+      const sinEtapa = STAGES.filter(st => !STAGE_AVAILABLE.has(st.key));
+      if (sinEtapa.length) DATA_ALERTS.push(`La hoja no tiene ninguna columna para la etapa <b>${sinEtapa.map(s => s.name).join(", ")}</b>. Esa etapa aparece atenuada y <b>no</b> cuenta como documento faltante. Para activarla agrega la columna <b>${sinEtapa.map(s => s.numCols[0] || s.dateCols[0]).join(", ")}</b>.`);
+      if (!linkCount) {
+        DATA_ALERTS.push(`<b>Ningún documento tiene link.</b> Si los abriste desde el CSV o desde un Excel subido, los
       hipervínculos de celda se pierden en ese formato — usa el botón <b>Actualizar</b> para leer la hoja publicada,
       que sí los conserva.`);
-  }
-  const docsSinLink = STAGES.filter(st=>st.doc && STAGE_AVAILABLE.has(st.key))
-    .map(st=>({st, n: out.filter(r=>r.stages[st.key].label && !r.stages[st.key].url).length}))
-    .filter(x=>x.n>0);
-  if(linkCount && docsSinLink.length){
-    DATA_ALERTS.push(`Documentos que tienen número pero <b>no tienen link</b> en la celda: `+
-      docsSinLink.map(x=>`${x.st.name} (${x.n})`).join(", ")+
-      `. Para que abran, en el Sheet selecciona la celda y pega el enlace de Drive con <b>Ctrl+K</b>.`);
-  }
-
-  return out;
-}
-
-/* ============================================================
-   RENDER
-   ============================================================ */
-function statusUI(state,msg){
-  const dot=document.getElementById("statusDot"), t=document.getElementById("statusText");
-  dot.className="dot"+(state==="off"?" off":state==="err"?" err":"");
-  t.textContent=msg;
-}
-function showError(html){
-  const b=document.getElementById("errBanner");
-  b.style.display="block"; b.innerHTML=html;
-}
-function showDemo(html){
-  const b=document.getElementById("demoBanner");
-  b.style.display="block"; b.innerHTML=html;
-}
-
-function filters(){
-  return {
-    estado: document.getElementById("fEstado").value,
-    prov:   document.getElementById("fProv").value,
-    agente: document.getElementById("fAgente").value,
-    q:      document.getElementById("fSearch").value.trim().toLowerCase(),
-  };
-}
-function applyFilters(rows){
-  const f=filters();
-  return rows.filter(r=>{
-    if(f.estado && r.estado!==f.estado) return false;
-    if(f.prov   && r.prov!==f.prov)     return false;
-    if(f.agente && r.agente!==f.agente) return false;
-    if(PIPE_FILTER && r.stages[PIPE_FILTER].has) return false;
-    if(f.q){
-      const hay=[r.prov,r.cont,r.agente,r.estadoRaw,r.id,
-        ...STAGES.map(s=>r.stages[s.key].label)].join(" ").toLowerCase();
-      if(!hay.includes(f.q)) return false;
-    }
-    return true;
-  });
-}
-
-function stateTag(r){
-  const cls={recibido:"recibido",camino:"camino",nacion:"nacion",produccion:"produccion",indef:"indef",na:"na"}[r.estado];
-  return `<span class="st ${cls}">${esc(r.estadoRaw||"Sin estado")}</span>`;
-}
-
-function trackHTML(r){
-  return `<div class="track">`+TRACK.map(st=>{
-    const s=r.stages[st.key];
-    const na=!STAGE_AVAILABLE.has(st.key);
-    const late=r.missing.includes(st.key);
-    const cls="step"+(s.has?" ok":"")+(s.url?" lnk":"")+(late?" late":"")+(na?" na":"");
-    const title=na ? `${st.name}: la hoja no tiene esta columna todavía`
-                   : `${st.name}: ${s.label||"pendiente"}`;
-    if(s.url) return `<a class="${cls}" href="${esc(s.url)}" target="_blank" rel="noopener" title="${esc(title)}" onclick="event.stopPropagation()">${st.short}</a>`;
-    return `<span class="${cls}" title="${esc(title)}">${st.short}</span>`;
-  }).join("")+`</div>`;
-}
-
-function timelineHTML(r){
-  return `<div class="tl">`+TRACK.map(st=>{
-    const s=r.stages[st.key];
-    const late=r.missing.includes(st.key);
-    const cls="tl-step"+(s.has?" done":"")+(late?" late":"");
-    let val="—";
-    if(s.url)        val=`<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label||"Abrir documento")} ↗</a>`;
-    else if(s.label) val=esc(s.label);
-    else if(s.date)  val=fmtDate(s.date);
-    else if(late)    val=`<span style="color:var(--red);font-weight:700">Falta</span>`;
-    let uploadBtn = "";
-    if (st.doc && !s.url) {
-      if (!r.id) {
-        uploadBtn = `<div style="margin-top:6px;font-size:11px;color:var(--muted);" title="Esta carga no tiene ID; no se puede subir documento">sin ID</div>`;
-      } else {
-        const lbl = s.label || "";
-        uploadBtn = `<button style="margin-top:6px;font-size:11px;padding:2px 6px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation(); abrirModal(this)" data-rid="${esc(r.id)}" data-prov="${esc(r.prov)}" data-stkey="${esc(st.key)}" data-stname="${esc(st.name)}" data-docnum="${esc(lbl)}">⬆ Subir</button>`;
       }
-    }
-    const dt=(s.date&&s.label)?`<div class="tl-date">${fmtDate(s.date)}</div>`:"";
-    return `<div class="${cls}"><div class="tl-dot">${st.short}</div>
-      <div class="tl-name">${st.name}</div><div class="tl-val">${val}</div>${uploadBtn}${dt}</div>`;
-  }).join("")+`</div>`;
-}
+      const docsSinLink = STAGES.filter(st => st.doc && STAGE_AVAILABLE.has(st.key))
+        .map(st => ({ st, n: out.filter(r => r.stages[st.key].label && !r.stages[st.key].url).length }))
+        .filter(x => x.n > 0);
+      if (linkCount && docsSinLink.length) {
+        DATA_ALERTS.push(`Documentos que tienen número pero <b>no tienen link</b> en la celda: ` +
+          docsSinLink.map(x => `${x.st.name} (${x.n})`).join(", ") +
+          `. Para que abran, en el Sheet selecciona la celda y pega el enlace de Drive con <b>Ctrl+K</b>.`);
+      }
 
-function detailHTML(r){
-  const kv=(k,v)=>`<div><div class="dg-k">${k}</div><div class="dg-v">${v||"—"}</div></div>`;
-  return `<div class="dwrap">
+      return out;
+    }
+
+    /* ============================================================
+       RENDER
+       ============================================================ */
+    function statusUI(state, msg) {
+      const dot = document.getElementById("statusDot"), t = document.getElementById("statusText");
+      dot.className = "dot" + (state === "off" ? " off" : state === "err" ? " err" : "");
+      t.textContent = msg;
+    }
+    function showError(html) {
+      const b = document.getElementById("errBanner");
+      b.style.display = "block"; b.innerHTML = html;
+    }
+    function showDemo(html) {
+      const b = document.getElementById("demoBanner");
+      b.style.display = "block"; b.innerHTML = html;
+    }
+
+    function filters() {
+      return {
+        estado: document.getElementById("fEstado").value,
+        prov: document.getElementById("fProv").value,
+        agente: document.getElementById("fAgente").value,
+        q: document.getElementById("fSearch").value.trim().toLowerCase(),
+      };
+    }
+    function applyFilters(rows) {
+      const f = filters();
+      return rows.filter(r => {
+        if (f.estado && r.estado !== f.estado) return false;
+        if (f.prov && r.prov !== f.prov) return false;
+        if (f.agente && r.agente !== f.agente) return false;
+        if (PIPE_FILTER && r.stages[PIPE_FILTER].has) return false;
+        if (f.q) {
+          const hay = [r.prov, r.cont, r.agente, r.estadoRaw, r.id,
+          ...STAGES.map(s => r.stages[s.key].label)].join(" ").toLowerCase();
+          if (!hay.includes(f.q)) return false;
+        }
+        return true;
+      });
+    }
+
+    function stateTag(r) {
+      const cls = { recibido: "recibido", camino: "camino", nacion: "nacion", produccion: "produccion", indef: "indef", na: "na" }[r.estado];
+      return `<span class="st ${cls}">${esc(r.estadoRaw || "Sin estado")}</span>`;
+    }
+
+    function trackHTML(r) {
+      return `<div class="track">` + TRACK.map(st => {
+        const s = r.stages[st.key];
+        const na = !STAGE_AVAILABLE.has(st.key);
+        const late = r.missing.includes(st.key);
+        const cls = "step" + (s.has ? " ok" : "") + (s.url ? " lnk" : "") + (late ? " late" : "") + (na ? " na" : "");
+        const title = na ? `${st.name}: la hoja no tiene esta columna todavía`
+          : `${st.name}: ${s.label || "pendiente"}`;
+        if (s.url) return `<a class="${cls}" href="${esc(s.url)}" target="_blank" rel="noopener" title="${esc(title)}" onclick="event.stopPropagation()">${st.short}</a>`;
+        return `<span class="${cls}" title="${esc(title)}">${st.short}</span>`;
+      }).join("") + `</div>`;
+    }
+
+    function timelineHTML(r) {
+      return `<div class="tl">` + TRACK.map(st => {
+        const s = r.stages[st.key];
+        const late = r.missing.includes(st.key);
+        const cls = "tl-step" + (s.has ? " done" : "") + (late ? " late" : "");
+        let val = "—";
+        if (s.url) val = `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label || "Abrir documento")} ↗</a>`;
+        else if (s.label) val = esc(s.label);
+        else if (s.date) val = fmtDate(s.date);
+        else if (late) val = `<span style="color:var(--red);font-weight:700">Falta</span>`;
+        let uploadBtn = "";
+        if (st.doc && !s.url) {
+          if (!r.id) {
+            uploadBtn = `<div style="margin-top:6px;font-size:11px;color:var(--muted);" title="Esta carga no tiene ID; no se puede subir documento">sin ID</div>`;
+          } else {
+            const lbl = s.label || "";
+            uploadBtn = `<button style="margin-top:6px;font-size:11px;padding:2px 6px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation(); abrirModal(this)" data-rid="${esc(r.id)}" data-prov="${esc(r.prov)}" data-stkey="${esc(st.key)}" data-stname="${esc(st.name)}" data-docnum="${esc(lbl)}">⬆ Subir</button>`;
+          }
+        }
+        const dt = (s.date && s.label) ? `<div class="tl-date">${fmtDate(s.date)}</div>` : "";
+        return `<div class="${cls}"><div class="tl-dot">${st.short}</div>
+      <div class="tl-name">${st.name}</div><div class="tl-val">${val}</div>${uploadBtn}${dt}</div>`;
+      }).join("") + `</div>`;
+    }
+
+    function detailHTML(r) {
+      const kv = (k, v) => `<div><div class="dg-k">${k}</div><div class="dg-v">${v || "—"}</div></div>`;
+      return `<div class="dwrap">
     ${timelineHTML(r)}
     <div class="dgrid">
-      ${kv("Proveedor",esc(r.prov))}
-      ${kv("Fecha PI/INV",fmtDate(r.fecha))}
-      ${kv("ETD (zarpe)",fmtDate(r.stages.etd.date))}
-      ${kv("ETA (arribo)",fmtDate(r.stages.eta.date))}
+      ${kv("Proveedor", esc(r.prov))}
+      ${kv("Fecha PI/INV", fmtDate(r.fecha))}
+      ${kv("ETD (zarpe)", fmtDate(r.stages.etd.date))}
+      ${kv("ETA (arribo)", fmtDate(r.stages.eta.date))}
       ${kv("Contenedor", r.contUrl
         ? `<a href="${esc(r.contUrl)}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">${esc(r.cont)} ↗</a>`
         : esc(r.cont))}
-      ${kv("Agente aduanal",esc(r.agente))}
+      ${kv("Agente aduanal", esc(r.agente))}
     </div>
   </div>`;
-}
+    }
 
-function renderKPIs(rows){
-  const total=rows.length;
-  const activas=rows.filter(r=>r.estado!=="recibido").length;
-  const transito=rows.filter(r=>r.estado==="camino"||r.estado==="nacion").length;
-  const incomp=rows.filter(r=>r.missing.length>0).length;
-  const recibidas=rows.filter(r=>r.estado==="recibido").length;
+    function renderKPIs(rows) {
+      const total = rows.length;
+      const activas = rows.filter(r => r.estado !== "recibido").length;
+      const transito = rows.filter(r => r.estado === "camino" || r.estado === "nacion").length;
+      const incomp = rows.filter(r => r.missing.length > 0).length;
+      const recibidas = rows.filter(r => r.estado === "recibido").length;
 
-  document.getElementById("kTotal").textContent=total;
-  document.getElementById("kTotalFoot").textContent=`${recibidas} ya recibidas`;
-  document.getElementById("kActivas").textContent=activas;
-  document.getElementById("kTransito").textContent=transito;
-  document.getElementById("kTransitoFoot").textContent="En camino + nacionalización";
-  document.getElementById("kIncomp").textContent=incomp;
-  document.getElementById("kIncompFoot").textContent= total?`${Math.round(incomp/total*100)}% de las cargas`:"—";
-}
+      document.getElementById("kTotal").textContent = total;
+      document.getElementById("kTotalFoot").textContent = `${recibidas} ya recibidas`;
+      document.getElementById("kActivas").textContent = activas;
+      document.getElementById("kTransito").textContent = transito;
+      document.getElementById("kTransitoFoot").textContent = "En camino + nacionalización";
+      document.getElementById("kIncomp").textContent = incomp;
+      document.getElementById("kIncompFoot").textContent = total ? `${Math.round(incomp / total * 100)}% de las cargas` : "—";
+    }
 
-function renderPipe(rows){
-  const el=document.getElementById("pipe");
-  const n=rows.length||1;
-  el.innerHTML=TRACK.map(st=>{
-    if(!STAGE_AVAILABLE.has(st.key)){
-      return `<div class="pipe-cell" style="opacity:.5;cursor:default" title="La hoja no tiene columna para esta etapa">
+    function renderPipe(rows) {
+      const el = document.getElementById("pipe");
+      const n = rows.length || 1;
+      el.innerHTML = TRACK.map(st => {
+        if (!STAGE_AVAILABLE.has(st.key)) {
+          return `<div class="pipe-cell" style="opacity:.5;cursor:default" title="La hoja no tiene columna para esta etapa">
         <div class="pn">${st.short}</div><div class="pv" style="color:#cbd5e1">—</div>
         <div class="pm">columna no creada</div><div class="bar"></div></div>`;
-    }
-    const have=rows.filter(r=>r.stages[st.key].has).length;
-    const pct=Math.round(have/n*100);
-    const on=PIPE_FILTER===st.key?" on":"";
-    return `<div class="pipe-cell${on}" data-k="${st.key}">
+        }
+        const have = rows.filter(r => r.stages[st.key].has).length;
+        const pct = Math.round(have / n * 100);
+        const on = PIPE_FILTER === st.key ? " on" : "";
+        return `<div class="pipe-cell${on}" data-k="${st.key}">
       <div class="pn">${st.short}</div>
       <div class="pv">${have}</div>
-      <div class="pm">de ${rows.length} · faltan ${rows.length-have}</div>
+      <div class="pm">de ${rows.length} · faltan ${rows.length - have}</div>
       <div class="bar"><i style="width:${pct}%"></i></div>
     </div>`;
-  }).join("");
-  el.querySelectorAll(".pipe-cell[data-k]").forEach(c=>{
-    c.onclick=()=>{ const k=c.dataset.k; PIPE_FILTER = (PIPE_FILTER===k?null:k); renderAll(); };
-  });
-}
+      }).join("");
+      el.querySelectorAll(".pipe-cell[data-k]").forEach(c => {
+        c.onclick = () => { const k = c.dataset.k; PIPE_FILTER = (PIPE_FILTER === k ? null : k); renderAll(); };
+      });
+    }
 
-function renderCharts(rows){
-  // 1. Estado
-  const order=["recibido","camino","nacion","produccion","indef","na"];
-  const counts=order.map(k=>rows.filter(r=>r.estado===k).length);
-  const cols=["#16a34a","#2563eb","#6366f1","#f59e0b","#dc2626","#94a3b8"];
-  const keep=order.map((k,i)=>i).filter(i=>counts[i]>0);
-  if(charts.estado) charts.estado.destroy();
-  charts.estado=new Chart(document.getElementById("chartEstado"),{
-    type:"doughnut",
-    data:{labels:keep.map(i=>ESTADO_LABEL[order[i]]),
-          datasets:[{data:keep.map(i=>counts[i]),backgroundColor:keep.map(i=>cols[i]),borderWidth:2,borderColor:"#fff"}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:"62%",plugins:{legend:{position:"bottom"}}}
-  });
+    function renderCharts(rows) {
+      // 1. Estado
+      const order = ["recibido", "camino", "nacion", "produccion", "indef", "na"];
+      const counts = order.map(k => rows.filter(r => r.estado === k).length);
+      const cols = ["#16a34a", "#2563eb", "#6366f1", "#f59e0b", "#dc2626", "#94a3b8"];
+      const keep = order.map((k, i) => i).filter(i => counts[i] > 0);
+      if (charts.estado) charts.estado.destroy();
+      charts.estado = new Chart(document.getElementById("chartEstado"), {
+        type: "doughnut",
+        data: {
+          labels: keep.map(i => ESTADO_LABEL[order[i]]),
+          datasets: [{ data: keep.map(i => counts[i]), backgroundColor: keep.map(i => cols[i]), borderWidth: 2, borderColor: "#fff" }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, cutout: "62%", plugins: { legend: { position: "bottom" } } }
+      });
 
-  // 2. Proveedores (cantidad de cargas)
-  const byProv={};
-  rows.forEach(r=>{ if(r.prov) byProv[r.prov]=(byProv[r.prov]||0)+1; });
-  const top=Object.entries(byProv).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  if(charts.prov) charts.prov.destroy();
-  charts.prov=new Chart(document.getElementById("chartProv"),{
-    type:"bar",
-    data:{labels:top.map(e=>e[0]),datasets:[{label:"Cargas",data:top.map(e=>e[1]),backgroundColor:"#2563eb",borderRadius:6}]},
-    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{x:{ticks:{precision:0}}}}
-  });
+      // 2. Proveedores (cantidad de cargas)
+      const byProv = {};
+      rows.forEach(r => { if (r.prov) byProv[r.prov] = (byProv[r.prov] || 0) + 1; });
+      const top = Object.entries(byProv).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      if (charts.prov) charts.prov.destroy();
+      charts.prov = new Chart(document.getElementById("chartProv"), {
+        type: "bar",
+        data: { labels: top.map(e => e[0]), datasets: [{ label: "Cargas", data: top.map(e => e[1]), backgroundColor: "#2563eb", borderRadius: 6 }] },
+        options: {
+          indexAxis: "y", responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { x: { ticks: { precision: 0 } } }
+        }
+      });
 
-  // 3. Evolución mensual (cantidad de cargas)
-  const byMes={};
-  rows.forEach(r=>{ if(r.fecha){
-    const k=r.fecha.getFullYear()+"-"+String(r.fecha.getMonth()+1).padStart(2,"0");
-    byMes[k]=(byMes[k]||0)+1;
-  }});
-  const meses=Object.keys(byMes).sort();
-  if(charts.mes) charts.mes.destroy();
-  charts.mes=new Chart(document.getElementById("chartMes"),{
-    type:"bar",
-    data:{labels:meses,datasets:[{label:"Cargas",data:meses.map(m=>byMes[m]),backgroundColor:"#0d9488",borderRadius:5}]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{y:{ticks:{precision:0}}}}
-  });
+      // 3. Evolución mensual (cantidad de cargas)
+      const byMes = {};
+      rows.forEach(r => {
+        if (r.fecha) {
+          const k = r.fecha.getFullYear() + "-" + String(r.fecha.getMonth() + 1).padStart(2, "0");
+          byMes[k] = (byMes[k] || 0) + 1;
+        }
+      });
+      const meses = Object.keys(byMes).sort();
+      if (charts.mes) charts.mes.destroy();
+      charts.mes = new Chart(document.getElementById("chartMes"), {
+        type: "bar",
+        data: { labels: meses, datasets: [{ label: "Cargas", data: meses.map(m => byMes[m]), backgroundColor: "#0d9488", borderRadius: 5 }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { ticks: { precision: 0 } } }
+        }
+      });
 
-  // 4. Completitud
-  const have=TRACK.map(st=>rows.filter(r=>r.stages[st.key].has).length);
-  if(charts.pipe) charts.pipe.destroy();
-  charts.pipe=new Chart(document.getElementById("chartPipe"),{
-    type:"bar",
-    data:{labels:TRACK.map(s=>s.short),datasets:[
-      {label:"Registrado",data:have,backgroundColor:"#16a34a",borderRadius:5},
-      {label:"Sin registrar",data:have.map(h=>rows.length-h),backgroundColor:"#e2e8f0",borderRadius:5},
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{position:"bottom"}},
-      scales:{x:{stacked:true},y:{stacked:true}}}
-  });
-}
+      // 4. Completitud
+      const have = TRACK.map(st => rows.filter(r => r.stages[st.key].has).length);
+      if (charts.pipe) charts.pipe.destroy();
+      charts.pipe = new Chart(document.getElementById("chartPipe"), {
+        type: "bar",
+        data: {
+          labels: TRACK.map(s => s.short), datasets: [
+            { label: "Registrado", data: have, backgroundColor: "#16a34a", borderRadius: 5 },
+            { label: "Sin registrar", data: have.map(h => rows.length - h), backgroundColor: "#e2e8f0", borderRadius: 5 },
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: "bottom" } },
+          scales: { x: { stacked: true }, y: { stacked: true } }
+        }
+      });
+    }
 
-function renderTable(rows){
-  document.getElementById("tCount").textContent=rows.length;
-  const tb=document.getElementById("tbody");
-  if(!rows.length){ tb.innerHTML=`<tr><td colspan="7" class="msg">Sin cargas que coincidan con los filtros.</td></tr>`; return; }
-  tb.innerHTML=rows.map(r=>{
-    const open=OPEN_ROW===r.i;
-    const main=`<tr class="row" data-i="${r.i}">
+    function renderTable(rows) {
+      document.getElementById("tCount").textContent = rows.length;
+      const tb = document.getElementById("tbody");
+      if (!rows.length) { tb.innerHTML = `<tr><td colspan="7" class="msg">Sin cargas que coincidan con los filtros.</td></tr>`; return; }
+      tb.innerHTML = rows.map(r => {
+        const open = OPEN_ROW === r.i;
+        const main = `<tr class="row" data-i="${r.i}">
       <td><span class="flag ${r.sem}"></span>${r.i}</td>
-      <td class="id">${esc(r.prov)||"—"}</td>
-      <td>${esc(r.stages.pi.label)||"—"}</td>
+      <td class="id">${esc(r.prov) || "—"}</td>
+      <td>${esc(r.stages.pi.label) || "—"}</td>
       <td>${trackHTML(r)}</td>
       <td>${stateTag(r)}</td>
       <td>${r.contUrl
-        ? `<a href="${esc(r.contUrl)}" target="_blank" rel="noopener" title="Rastrear contenedor" onclick="event.stopPropagation()" style="color:var(--blue);font-weight:600;text-decoration:none">${esc(r.cont)} ↗</a>`
-        : (esc(r.cont)||"—")}</td>
-      <td>${esc(r.agente)||"—"}</td>
+            ? `<a href="${esc(r.contUrl)}" target="_blank" rel="noopener" title="Rastrear contenedor" onclick="event.stopPropagation()" style="color:var(--blue);font-weight:600;text-decoration:none">${esc(r.cont)} ↗</a>`
+            : (esc(r.cont) || "—")}</td>
+      <td>${esc(r.agente) || "—"}</td>
     </tr>`;
-    const det=open?`<tr class="detail"><td colspan="7">${detailHTML(r)}</td></tr>`:"";
-    return main+det;
-  }).join("");
-  tb.querySelectorAll("tr.row").forEach(tr=>{
-    tr.onclick=()=>{ const i=+tr.dataset.i; OPEN_ROW = (OPEN_ROW===i?null:i); renderTable(applyFilters(ROWS)); };
-  });
-}
+        const det = open ? `<tr class="detail"><td colspan="7">${detailHTML(r)}</td></tr>` : "";
+        return main + det;
+      }).join("");
+      tb.querySelectorAll("tr.row").forEach(tr => {
+        tr.onclick = () => { const i = +tr.dataset.i; OPEN_ROW = (OPEN_ROW === i ? null : i); renderTable(applyFilters(ROWS)); };
+      });
+    }
 
-function fillSelect(sel, values, allLabel){
-  const cur=sel.value;
-  sel.innerHTML=`<option value="">${allLabel}</option>`+
-    [...values].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b)))
-      .map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
-  sel.value=cur;
-}
-function refreshOptions(){
-  const est=new Set(ROWS.map(r=>r.estado));
-  const sel=document.getElementById("fEstado"), cur=sel.value;
-  sel.innerHTML=`<option value="">Todos</option>`+
-    [...est].sort().map(k=>`<option value="${k}">${ESTADO_LABEL[k]}</option>`).join("");
-  sel.value=cur;
-  fillSelect(document.getElementById("fProv"),  new Set(ROWS.map(r=>r.prov)),   "Todos");
-  fillSelect(document.getElementById("fAgente"),new Set(ROWS.map(r=>r.agente)), "Todos");
-}
-function renderAlerts(){
-  const p=document.getElementById("alertsPanel"), l=document.getElementById("alertsList");
-  if(!DATA_ALERTS.length){ p.style.display="none"; return; }
-  p.style.display="block";
-  document.getElementById("alertsCount").textContent=DATA_ALERTS.length;
-  l.innerHTML=DATA_ALERTS.map(a=>`<li>${a}</li>`).join("");
-}
+    function fillSelect(sel, values, allLabel) {
+      const cur = sel.value;
+      sel.innerHTML = `<option value="">${allLabel}</option>` +
+        [...values].filter(Boolean).sort((a, b) => String(a).localeCompare(String(b)))
+          .map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+      sel.value = cur;
+    }
+    function refreshOptions() {
+      const est = new Set(ROWS.map(r => r.estado));
+      const sel = document.getElementById("fEstado"), cur = sel.value;
+      sel.innerHTML = `<option value="">Todos</option>` +
+        [...est].sort().map(k => `<option value="${k}">${ESTADO_LABEL[k]}</option>`).join("");
+      sel.value = cur;
+      fillSelect(document.getElementById("fProv"), new Set(ROWS.map(r => r.prov)), "Todos");
+      fillSelect(document.getElementById("fAgente"), new Set(ROWS.map(r => r.agente)), "Todos");
+    }
+    function renderAlerts() {
+      const p = document.getElementById("alertsPanel"), l = document.getElementById("alertsList");
+      if (!DATA_ALERTS.length) { p.style.display = "none"; return; }
+      p.style.display = "block";
+      document.getElementById("alertsCount").textContent = DATA_ALERTS.length;
+      l.innerHTML = DATA_ALERTS.map(a => `<li>${a}</li>`).join("");
+    }
 
-function renderAll(){
-  refreshOptions();          // ← faltaba: sin esto los desplegables quedan vacíos
-  renderKPIs(ROWS);
-  renderPipe(ROWS);
-  renderCharts(ROWS);
-  renderTable(applyFilters(ROWS));
-  renderAlerts();
-}
+    function renderAll() {
+      refreshOptions();          // ← faltaba: sin esto los desplegables quedan vacíos
+      renderKPIs(ROWS);
+      renderPipe(ROWS);
+      renderCharts(ROWS);
+      renderTable(applyFilters(ROWS));
+      renderAlerts();
+    }
 
-/* ============================================================
-   CARGA DE DATOS
-   ============================================================ */
-async function loadLive(){
-  statusUI("off","Cargando…");
-  document.getElementById("errBanner").style.display="none";
-  document.getElementById("demoBanner").style.display="none";
-  const hora=()=>new Date().toLocaleTimeString("es-VE",{hour:"2-digit",minute:"2-digit"});
-  const grab=async u=>{
-    const res=await fetch(u,{cache:"no-store"});
-    if(!res.ok) throw new Error("HTTP "+res.status);
-    return res.text();
-  };
+    /* ============================================================
+       CARGA DE DATOS
+       ============================================================ */
+    async function loadLive() {
+      statusUI("off", "Cargando…");
+      document.getElementById("errBanner").style.display = "none";
+      document.getElementById("demoBanner").style.display = "none";
+      const hora = () => new Date().toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" });
+      const grab = async u => {
+        const res = await fetch(u, { cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.text();
+      };
 
-  // 1) HTML publicado (trae los hipervínculos). Primero por el proxy, luego directo.
-  for(const src of [PROXY_HTML, htmlUrl()]){
-    try{
-      const {matrix,links}=parsePubHtml(await grab(src));
-      const rows=normalize(matrix,links);
-      if(!rows.length) throw new Error("sin filas");
-      ROWS=rows;
-      const conLink=ROWS.reduce((a,r)=>a+STAGES.filter(s=>r.stages[s.key].url).length,0);
-      statusUI("ok",`En vivo · ${ROWS.length} cargas · ${conLink} documentos con link · ${hora()}`);
-      renderAll();
-      return;
-    }catch(e){ console.warn("HTML vía",src,"falló:",e.message); }
-  }
+      // 1) HTML publicado (trae los hipervínculos). Primero por el proxy, luego directo.
+      for (const src of [PROXY_HTML, htmlUrl()]) {
+        try {
+          const { matrix, links } = parsePubHtml(await grab(src));
+          const rows = normalize(matrix, links);
+          if (!rows.length) throw new Error("sin filas");
+          ROWS = rows;
+          const conLink = ROWS.reduce((a, r) => a + STAGES.filter(s => r.stages[s.key].url).length, 0);
+          statusUI("ok", `En vivo · ${ROWS.length} cargas · ${conLink} documentos con link · ${hora()}`);
+          renderAll();
+          return;
+        } catch (e) { console.warn("HTML vía", src, "falló:", e.message); }
+      }
 
-  // 2) CSV publicado: mismos datos pero sin links
-  let last="";
-  for(const src of [PROXY_CSV, csvUrl()]){
-    try{
-      const text=await grab(src);
-      if(/<html/i.test(text)) throw new Error("respuesta no es CSV");
-      const rows=normalize(parseCSV(text));
-      if(!rows.length) throw new Error("sin filas");
-      ROWS=rows;
-      statusUI("off",`En vivo (CSV, sin links) · ${ROWS.length} cargas · ${hora()}`);
-      renderAll();
-      return;
-    }catch(e){ last=e.message; console.warn("CSV vía",src,"falló:",e.message); }
-  }
+      // 2) CSV publicado: mismos datos pero sin links
+      let last = "";
+      for (const src of [PROXY_CSV, csvUrl()]) {
+        try {
+          const text = await grab(src);
+          if (/<html/i.test(text)) throw new Error("respuesta no es CSV");
+          const rows = normalize(parseCSV(text));
+          if (!rows.length) throw new Error("sin filas");
+          ROWS = rows;
+          statusUI("off", `En vivo (CSV, sin links) · ${ROWS.length} cargas · ${hora()}`);
+          renderAll();
+          return;
+        } catch (e) { last = e.message; console.warn("CSV vía", src, "falló:", e.message); }
+      }
 
-  {
-    const e={message:last||"no se pudo contactar la hoja"};
-    statusUI("err","Sin conexión a la hoja");
-    const local = location.protocol==="file:";
-    showError(local
-      ? `<b>El navegador bloqueó la lectura en vivo.</b> Abriste el dashboard con doble clic
+      {
+        const e = { message: last || "no se pudo contactar la hoja" };
+        statusUI("err", "Sin conexión a la hoja");
+        const local = location.protocol === "file:";
+        showError(local
+          ? `<b>El navegador bloqueó la lectura en vivo.</b> Abriste el dashboard con doble clic
          (<code>file://</code>) y Chrome no deja que un archivo local pida datos a un sitio externo.
          La hoja está bien publicada; es una restricción del navegador.<br>
          <b>Solución:</b> usa el botón <b>Subir Excel</b> de arriba — trae los mismos datos <i>y</i> los links.
          En el Sheet: <b>Archivo → Descargar → Microsoft Excel (.xlsx)</b>.`
-      : `<b>No se pudo leer la hoja publicada.</b> ${esc(e.message)}. Revisa que siga publicada en
+          : `<b>No se pudo leer la hoja publicada.</b> ${esc(e.message)}. Revisa que siga publicada en
          <b>Archivo → Compartir → Publicar en la Web</b>, o usa <b>Subir Excel</b>.`);
-    loadDemo();
-  }
-}
-
-/* sheet_to_json descarta los hipervínculos. Recorriendo las celdas a mano
-   sí se leen: SheetJS los deja en cell.l.Target. Un .xlsx bajado de Google
-   Sheets conserva los links, así que esta ruta funciona igual que la online. */
-function sheetToMatrixWithLinks(ws){
-  const matrix=[], links=[];
-  if(!ws || !ws["!ref"]) return {matrix,links};
-  const R=XLSX.utils.decode_range(ws["!ref"]);
-  for(let r=R.s.r;r<=R.e.r;r++){
-    const mrow=[], lrow=[];
-    for(let c=R.s.c;c<=R.e.c;c++){
-      const cell=ws[XLSX.utils.encode_cell({r,c})];
-      mrow.push(cell ? String(cell.w!=null?cell.w:(cell.v!=null?cell.v:"")).trim() : "");
-      lrow.push(cell&&cell.l&&cell.l.Target ? unwrapGoogle(String(cell.l.Target)) : "");
-    }
-    matrix.push(mrow); links.push(lrow);
-  }
-  return {matrix,links};
-}
-
-function loadFile(file){
-  const rd=new FileReader();
-  rd.onload=e=>{
-    try{
-      const wb=XLSX.read(new Uint8Array(e.target.result),{type:"array"});
-      const name=wb.SheetNames.find(n=>n.trim().toUpperCase()===SHEET_NAME.toUpperCase()) || wb.SheetNames[0];
-      const {matrix,links}=sheetToMatrixWithLinks(wb.Sheets[name]);
-      ROWS=normalize(matrix,links);
-      if(!ROWS.length) throw new Error("la pestaña «"+name+"» no tiene filas reconocibles");
-      document.getElementById("errBanner").style.display="none";
-      document.getElementById("demoBanner").style.display="none";
-      const conLink=ROWS.reduce((a,r)=>a+STAGES.filter(s=>r.stages[s.key].url).length,0);
-      statusUI("ok",`Archivo «${name}» · ${ROWS.length} cargas · ${conLink} documentos con link`);
-      renderAll();
-    }catch(err){ showError("<b>No se pudo leer el archivo.</b> "+esc(err.message)); }
-  };
-  rd.readAsArrayBuffer(file);
-}
-
-/* Muestra real de la hoja para poder evaluar el diseño sin publicarla */
-const DEMO=[
-["Fecha PI/INV", "Status", "Supplier", "PI No", "Link Invoice", "Link Packing List", "BL", "Container ID", "Agente aduanal", "ETD", "ETA", "Subtotal", "Flete", "Total", "Anticipo (%)", "Total Anticipo", "Por Pagar"],
-["24/09/2025", "Recibido", "Sumec", "25MEXUS-C6507CF", "SU806207CF-25_bg_inv", "SU806207CF-25_pkg", "MEDUOZ357262", "MSBU7597539", "Carzoma", "14/11/2025", "8/12/2025", "$298.484,00", "", "$298.484,00", "19%", "$55.697,11", "$242.786,89"],
-["21/11/2025", "Recibido", "Sunet", "SNT202511068 PI", "SNT202611068-1 Invoice & Packing list", "", "MEDUWG066196", "BMOU6756281", "Carzoma", "29/11/2025", "28/01/2026", "$77.336,00", "", "$77.336,00", "30%", "$23.200,80", "$54.135,20"],
-["11/12/2025", "Recibido", "Sumec", "25MEXUS-C6670CF", "SU806012CF-26", "SU806012CF-26 PL", "MEDUWK570721", "MSBU7789629", "Carzoma", "7/02/2026", "23/04/2026", "$218.450,00", "", "$218.450,00", "", "$0,00", "$218.450,00"],
-["20/02/2026", "Recibido", "EPCOM", "FTZ2066768", "FTZ2066768", "PLcot_FTZ2066768", "FFCM-00772", "Por definir", "Carzoma", "", "", "$123.024,08", "", "$123.024,08", "", "$0,00", "$123.024,08"],
-["15/05/2026", "Proc. Nacionalizacion", "Sunet", "SNT202603015-3/03079-1", "SNT202603015-3/03079-1", "", "MEDUYO837700", "CAIU4755769", "Carzoma", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
-["25/05/2026", "Proc. Nacionalizacion", "Sunet", "SNT202603034-2/03079-2", "SNT202603034-2/03079-2", "", "MEDUXZ669128", "TGBU9811869", "Carzoma", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
-["16/11/2025", "Proc. Nacionalizacion", "HTFuture", "HPI-R036-25111601", "", "", "", "", "", "", "", "$28.454,36", "", "$28.454,36", "20%", "$5.690,87", "$22.763,49"],
-["22/01/2026", "En camino ", "Queenton", "PI QTM260122PF", "", "", "26040802", "Por definir", "Carzoma", "", "", "$18.652,00", "", "$18.652,00", "", "$0,00", "$18.652,00"],
-["1/06/2026", "En camino ", "Sunet", "SNT202606071", "", "", "", "", "", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
-["2/06/2026", "En produccion", "Sumec", "26Mexus-C6273CF", "", "", "MEDUY6848293", "MSGU5112278", "Carzoma", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
-["16/04/2026", "En produccion", "Sunet", "SNT202604038-1", "", "", "", "Por definir", "Carzoma", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
-["", "En produccion", "ZIKUN", "ZT20260709", "", "", "", "", "", "31/10/1899", "", "", "", "$0,00", "", "$0,00", "$0,00"],
-["", "En produccion", "JILONG", "04232026061701", "", "", "", "", "", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
-["", "En produccion", "WICHIT", "723001", "", "", "", "", "", "31/10/1899", "", "", "", "$0,00", "", "$0,00", "$0,00"],
-["20/11/2025", "Indefinido", "Komshine/Tawa", "83072025111801", "", "", "", "Por definir", "", "", "", "$20,00", "", "$20,00", "", "$0,00", "$20,00"],
-["24/02/2026", "Indefinido", "Komshine/Tawa", "83102026022402", "", "", "", "ENVIO POR DHL", "", "", "", "$31.450,00", "$4.123,00", "$35.573,00", "", "$0,00", "$35.573,00"],
-["3/11/2025", "Recibido", "ZHENGZHOU WEUNION", "ZHENGZHOU WEUNION", "20251022WUNNIC001 invoice & packing list", "", "MEDUWG066196", "BMOU6756281", "Carzoma", "29/11/2025", "28/01/2026", "$22.240,00", "", "$22.240,00", "100%", "$22.240,00", "$0,00"],
-["9/10/2025", "Recibido", "Sunet", "SNT202510008 PI", "SNT202510008 Invoice & Packing list", "", "MEDURC272503", "GAOU6746317", "", "24/11/2025", "12/01/2026", "$63.905,00", "", "$63.905,00", "", "$0,00", "$63.905,00"],
-["5/05/2025", "Recibido", "Komshine/Tawa", "83072025050501 - PI", "", "", "BillOfLading-MEDUW4192573", "UETU6568880", "", "", "", "$17.080,00", "", "$17.080,00", "100%", "$17.080,00", "$0,00"],
-];
-function loadDemo(){
-  ROWS=normalize(DEMO);
-  showDemo(`<b>Modo demostración.</b> Muestra de 19 cargas incrustada en el archivo, sin links y sin montos completos.
-    Usa <b>Subir Excel</b> para cargar las ~85 cargas reales con sus documentos.`);
-  renderAll();
-}
-
-/* ====== EVENTOS ====== */
-document.getElementById("sheetLink").href=SHEET_URL;
-document.getElementById("alertsToggle").onclick=()=>{
-  const l=document.getElementById("alertsList"), c=document.getElementById("alertsCaret");
-  const open=l.style.display!=="none";
-  l.style.display=open?"none":"block";
-  c.textContent=open?"▸":"▾";
-};
-document.getElementById("btnReload").onclick=loadLive;
-document.getElementById("btnUpload").onclick=()=>document.getElementById("fileInput").click();
-document.getElementById("fileInput").onchange=e=>{ if(e.target.files[0]) loadFile(e.target.files[0]); };
-["fEstado","fProv","fAgente"].forEach(id=>document.getElementById(id).onchange=()=>{OPEN_ROW=null;renderAll();});
-document.getElementById("fSearch").oninput=()=>{OPEN_ROW=null;renderTable(applyFilters(ROWS));};
-document.getElementById("clearFilters").onclick=()=>{
-  ["fEstado","fProv","fAgente"].forEach(id=>document.getElementById(id).value="");
-  document.getElementById("fSearch").value="";
-  PIPE_FILTER=null; OPEN_ROW=null; renderAll();
-};
-
-loadLive();
-
-/* ====== MODAL DE SUBIDA ====== */
-function setModalAlert(msg, isError) {
-  const el = document.getElementById("modalAlert");
-  if (!msg) { el.style.display = "none"; return; }
-  el.innerHTML = msg;
-  el.style.display = "block";
-  el.style.backgroundColor = isError ? "#fef2f2" : "#dcfce7";
-  el.style.color = isError ? "var(--red)" : "var(--green-d)";
-  el.style.border = `1px solid ${isError ? "#fecaca" : "#bbf7d0"}`;
-}
-
-function abrirModal(btn) {
-  const modal = document.getElementById("uploadModal");
-  if (btn) {
-    const d = btn.dataset;
-    modal.dataset.stkey = d.stkey || "";
-    modal.dataset.rid = d.rid || "";
-    document.getElementById("modalCargaText").textContent = (d.prov || "Sin proveedor") + " - " + (d.rid || "");
-    document.getElementById("modalEtapaText").textContent = d.stname || "";
-    document.getElementById("modalDocNum").value = d.docnum || "";
-    document.getElementById("modalDocFile").value = "";
-    setModalAlert("", false);
-  }
-  modal.style.display = "flex";
-}
-function cerrarModal() {
-  if (document.getElementById("modalSubmit").disabled) return;
-  document.getElementById("uploadModal").style.display = "none";
-}
-document.getElementById("uploadModal").onclick = cerrarModal;
-document.getElementById("modalCloseX").onclick = cerrarModal;
-document.getElementById("modalCancel").onclick = cerrarModal;
-document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && document.getElementById("uploadModal").style.display === "flex") {
-    cerrarModal();
-  }
-});
-
-document.getElementById("modalSubmit").onclick = () => {
-  setModalAlert("", false);
-  const docNum = document.getElementById("modalDocNum").value.trim();
-  if (!docNum) return setModalAlert("El número de documento no puede estar vacío.", true);
-
-  const fileInput = document.getElementById("modalDocFile");
-  if (!fileInput.files || !fileInput.files.length) return setModalAlert("Debe seleccionar un archivo.", true);
-
-  const file = fileInput.files[0];
-  const allowed = [".pdf", ".jpg", ".jpeg", ".png"];
-  const fileName = file.name;
-  const ext = fileName.includes('.') ? "." + fileName.split('.').pop().toLowerCase() : "";
-  if (!allowed.includes(ext)) {
-    return setModalAlert("Extensión no permitida. Solo .pdf, .jpg, .jpeg, .png", true);
-  }
-
-  const mb = file.size / (1024 * 1024);
-  if (mb > 10) {
-    return setModalAlert(`El archivo pesa ${mb.toFixed(2)} MB. El máximo permitido es 10 MB.`, true);
-  }
-
-  const modal = document.getElementById("uploadModal");
-  const id = modal.dataset.rid;
-  const etapa = modal.dataset.stkey;
-  const safeNum = docNum.replace(/[^a-zA-Z0-9\-_]/g, "");
-  const filename = `${id}_${etapa.toUpperCase()}_${safeNum}${ext}`;
-  const mimeType = file.type;
-
-  const reader = new FileReader();
-  reader.onload = async e => {
-    const dataUrl = e.target.result;
-    const base64 = dataUrl.split(",")[1];
-    const payload = { token: UPLOAD_TOKEN, id, etapa, numero: docNum, filename, mimeType, base64 };
-    
-    const btnSubmit = document.getElementById("modalSubmit");
-    const originalText = btnSubmit.textContent;
-    btnSubmit.disabled = true;
-    btnSubmit.textContent = "Subiendo…";
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
-    
-    try {
-      const res = await fetch(UPLOAD_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      
-      let data;
-      try {
-        data = await res.json();
-      } catch (err) {
-        throw new Error("no-json");
+        loadDemo();
       }
-      
-      if (data && data.ok) {
-        const row = ROWS.find(r => r.id === id);
-        if (row) {
-          const st = row.stages[etapa];
-          st.url = data.url;
-          if (!st.label) st.label = docNum;
-          st.has = true;
-          calcRowStatus(row);
-          renderAll();
+    }
+
+    /* sheet_to_json descarta los hipervínculos. Recorriendo las celdas a mano
+       sí se leen: SheetJS los deja en cell.l.Target. Un .xlsx bajado de Google
+       Sheets conserva los links, así que esta ruta funciona igual que la online. */
+    function sheetToMatrixWithLinks(ws) {
+      const matrix = [], links = [];
+      if (!ws || !ws["!ref"]) return { matrix, links };
+      const R = XLSX.utils.decode_range(ws["!ref"]);
+      for (let r = R.s.r; r <= R.e.r; r++) {
+        const mrow = [], lrow = [];
+        for (let c = R.s.c; c <= R.e.c; c++) {
+          const cell = ws[XLSX.utils.encode_cell({ r, c })];
+          mrow.push(cell ? String(cell.w != null ? cell.w : (cell.v != null ? cell.v : "")).trim() : "");
+          lrow.push(cell && cell.l && cell.l.Target ? unwrapGoogle(String(cell.l.Target)) : "");
         }
-        
-        setModalAlert(`Documento subido. <a href="${data.url}" target="_blank" rel="noopener" style="color:#15803d;text-decoration:underline">Ver en Drive</a>`, false);
-        setTimeout(() => {
+        matrix.push(mrow); links.push(lrow);
+      }
+      return { matrix, links };
+    }
+
+    function loadFile(file) {
+      const rd = new FileReader();
+      rd.onload = e => {
+        try {
+          const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+          const name = wb.SheetNames.find(n => n.trim().toUpperCase() === SHEET_NAME.toUpperCase()) || wb.SheetNames[0];
+          const { matrix, links } = sheetToMatrixWithLinks(wb.Sheets[name]);
+          ROWS = normalize(matrix, links);
+          if (!ROWS.length) throw new Error("la pestaña «" + name + "» no tiene filas reconocibles");
+          document.getElementById("errBanner").style.display = "none";
+          document.getElementById("demoBanner").style.display = "none";
+          const conLink = ROWS.reduce((a, r) => a + STAGES.filter(s => r.stages[s.key].url).length, 0);
+          statusUI("ok", `Archivo «${name}» · ${ROWS.length} cargas · ${conLink} documentos con link`);
+          renderAll();
+        } catch (err) { showError("<b>No se pudo leer el archivo.</b> " + esc(err.message)); }
+      };
+      rd.readAsArrayBuffer(file);
+    }
+
+    /* Muestra real de la hoja para poder evaluar el diseño sin publicarla */
+    const DEMO = [
+      ["Fecha PI/INV", "Status", "Supplier", "PI No", "Link Invoice", "Link Packing List", "BL", "Container ID", "Agente aduanal", "ETD", "ETA", "Subtotal", "Flete", "Total", "Anticipo (%)", "Total Anticipo", "Por Pagar"],
+      ["24/09/2025", "Recibido", "Sumec", "25MEXUS-C6507CF", "SU806207CF-25_bg_inv", "SU806207CF-25_pkg", "MEDUOZ357262", "MSBU7597539", "Carzoma", "14/11/2025", "8/12/2025", "$298.484,00", "", "$298.484,00", "19%", "$55.697,11", "$242.786,89"],
+      ["21/11/2025", "Recibido", "Sunet", "SNT202511068 PI", "SNT202611068-1 Invoice & Packing list", "", "MEDUWG066196", "BMOU6756281", "Carzoma", "29/11/2025", "28/01/2026", "$77.336,00", "", "$77.336,00", "30%", "$23.200,80", "$54.135,20"],
+      ["11/12/2025", "Recibido", "Sumec", "25MEXUS-C6670CF", "SU806012CF-26", "SU806012CF-26 PL", "MEDUWK570721", "MSBU7789629", "Carzoma", "7/02/2026", "23/04/2026", "$218.450,00", "", "$218.450,00", "", "$0,00", "$218.450,00"],
+      ["20/02/2026", "Recibido", "EPCOM", "FTZ2066768", "FTZ2066768", "PLcot_FTZ2066768", "FFCM-00772", "Por definir", "Carzoma", "", "", "$123.024,08", "", "$123.024,08", "", "$0,00", "$123.024,08"],
+      ["15/05/2026", "Proc. Nacionalizacion", "Sunet", "SNT202603015-3/03079-1", "SNT202603015-3/03079-1", "", "MEDUYO837700", "CAIU4755769", "Carzoma", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
+      ["25/05/2026", "Proc. Nacionalizacion", "Sunet", "SNT202603034-2/03079-2", "SNT202603034-2/03079-2", "", "MEDUXZ669128", "TGBU9811869", "Carzoma", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
+      ["16/11/2025", "Proc. Nacionalizacion", "HTFuture", "HPI-R036-25111601", "", "", "", "", "", "", "", "$28.454,36", "", "$28.454,36", "20%", "$5.690,87", "$22.763,49"],
+      ["22/01/2026", "En camino ", "Queenton", "PI QTM260122PF", "", "", "26040802", "Por definir", "Carzoma", "", "", "$18.652,00", "", "$18.652,00", "", "$0,00", "$18.652,00"],
+      ["1/06/2026", "En camino ", "Sunet", "SNT202606071", "", "", "", "", "", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
+      ["2/06/2026", "En produccion", "Sumec", "26Mexus-C6273CF", "", "", "MEDUY6848293", "MSGU5112278", "Carzoma", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
+      ["16/04/2026", "En produccion", "Sunet", "SNT202604038-1", "", "", "", "Por definir", "Carzoma", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
+      ["", "En produccion", "ZIKUN", "ZT20260709", "", "", "", "", "", "31/10/1899", "", "", "", "$0,00", "", "$0,00", "$0,00"],
+      ["", "En produccion", "JILONG", "04232026061701", "", "", "", "", "", "", "", "", "", "$0,00", "", "$0,00", "$0,00"],
+      ["", "En produccion", "WICHIT", "723001", "", "", "", "", "", "31/10/1899", "", "", "", "$0,00", "", "$0,00", "$0,00"],
+      ["20/11/2025", "Indefinido", "Komshine/Tawa", "83072025111801", "", "", "", "Por definir", "", "", "", "$20,00", "", "$20,00", "", "$0,00", "$20,00"],
+      ["24/02/2026", "Indefinido", "Komshine/Tawa", "83102026022402", "", "", "", "ENVIO POR DHL", "", "", "", "$31.450,00", "$4.123,00", "$35.573,00", "", "$0,00", "$35.573,00"],
+      ["3/11/2025", "Recibido", "ZHENGZHOU WEUNION", "ZHENGZHOU WEUNION", "20251022WUNNIC001 invoice & packing list", "", "MEDUWG066196", "BMOU6756281", "Carzoma", "29/11/2025", "28/01/2026", "$22.240,00", "", "$22.240,00", "100%", "$22.240,00", "$0,00"],
+      ["9/10/2025", "Recibido", "Sunet", "SNT202510008 PI", "SNT202510008 Invoice & Packing list", "", "MEDURC272503", "GAOU6746317", "", "24/11/2025", "12/01/2026", "$63.905,00", "", "$63.905,00", "", "$0,00", "$63.905,00"],
+      ["5/05/2025", "Recibido", "Komshine/Tawa", "83072025050501 - PI", "", "", "BillOfLading-MEDUW4192573", "UETU6568880", "", "", "", "$17.080,00", "", "$17.080,00", "100%", "$17.080,00", "$0,00"],
+    ];
+    function loadDemo() {
+      ROWS = normalize(DEMO);
+      showDemo(`<b>Modo demostración.</b> Muestra de 19 cargas incrustada en el archivo, sin links y sin montos completos.
+    Usa <b>Subir Excel</b> para cargar las ~85 cargas reales con sus documentos.`);
+      renderAll();
+    }
+
+    /* ====== EVENTOS ====== */
+    document.getElementById("sheetLink").href = SHEET_URL;
+    document.getElementById("alertsToggle").onclick = () => {
+      const l = document.getElementById("alertsList"), c = document.getElementById("alertsCaret");
+      const open = l.style.display !== "none";
+      l.style.display = open ? "none" : "block";
+      c.textContent = open ? "▸" : "▾";
+    };
+    document.getElementById("btnReload").onclick = loadLive;
+    document.getElementById("btnUpload").onclick = () => document.getElementById("fileInput").click();
+    document.getElementById("fileInput").onchange = e => { if (e.target.files[0]) loadFile(e.target.files[0]); };
+    ["fEstado", "fProv", "fAgente"].forEach(id => document.getElementById(id).onchange = () => { OPEN_ROW = null; renderAll(); });
+    document.getElementById("fSearch").oninput = () => { OPEN_ROW = null; renderTable(applyFilters(ROWS)); };
+    document.getElementById("clearFilters").onclick = () => {
+      ["fEstado", "fProv", "fAgente"].forEach(id => document.getElementById(id).value = "");
+      document.getElementById("fSearch").value = "";
+      PIPE_FILTER = null; OPEN_ROW = null; renderAll();
+    };
+
+    loadLive();
+
+    /* ====== MODAL DE SUBIDA ====== */
+    function setModalAlert(msg, isError) {
+      const el = document.getElementById("modalAlert");
+      if (!msg) { el.style.display = "none"; return; }
+      el.innerHTML = msg;
+      el.style.display = "block";
+      el.style.backgroundColor = isError ? "#fef2f2" : "#dcfce7";
+      el.style.color = isError ? "var(--red)" : "var(--green-d)";
+      el.style.border = `1px solid ${isError ? "#fecaca" : "#bbf7d0"}`;
+    }
+
+    function abrirModal(btn) {
+      const modal = document.getElementById("uploadModal");
+      if (btn) {
+        const d = btn.dataset;
+        modal.dataset.stkey = d.stkey || "";
+        modal.dataset.rid = d.rid || "";
+        document.getElementById("modalCargaText").textContent = (d.prov || "Sin proveedor") + " - " + (d.rid || "");
+        document.getElementById("modalEtapaText").textContent = d.stname || "";
+        document.getElementById("modalDocNum").value = d.docnum || "";
+        document.getElementById("modalDocFile").value = "";
+        setModalAlert("", false);
+      }
+      modal.style.display = "flex";
+    }
+    function cerrarModal() {
+      if (document.getElementById("modalSubmit").disabled) return;
+      document.getElementById("uploadModal").style.display = "none";
+    }
+    document.getElementById("uploadModal").onclick = cerrarModal;
+    document.getElementById("modalCloseX").onclick = cerrarModal;
+    document.getElementById("modalCancel").onclick = cerrarModal;
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && document.getElementById("uploadModal").style.display === "flex") {
+        cerrarModal();
+      }
+    });
+
+    document.getElementById("modalSubmit").onclick = () => {
+      setModalAlert("", false);
+      const docNum = document.getElementById("modalDocNum").value.trim();
+      if (!docNum) return setModalAlert("El número de documento no puede estar vacío.", true);
+
+      const fileInput = document.getElementById("modalDocFile");
+      if (!fileInput.files || !fileInput.files.length) return setModalAlert("Debe seleccionar un archivo.", true);
+
+      const file = fileInput.files[0];
+      const allowed = [".pdf", ".jpg", ".jpeg", ".png"];
+      const fileName = file.name;
+      const ext = fileName.includes('.') ? "." + fileName.split('.').pop().toLowerCase() : "";
+      if (!allowed.includes(ext)) {
+        return setModalAlert("Extensión no permitida. Solo .pdf, .jpg, .jpeg, .png", true);
+      }
+
+      const mb = file.size / (1024 * 1024);
+      if (mb > 10) {
+        return setModalAlert(`El archivo pesa ${mb.toFixed(2)} MB. El máximo permitido es 10 MB.`, true);
+      }
+
+      const modal = document.getElementById("uploadModal");
+      const id = modal.dataset.rid;
+      const etapa = modal.dataset.stkey;
+      const safeNum = docNum.replace(/[^a-zA-Z0-9\-_]/g, "");
+      const filename = `${id}_${etapa.toUpperCase()}_${safeNum}${ext}`;
+      const mimeType = file.type;
+
+      const reader = new FileReader();
+      reader.onload = async e => {
+        const dataUrl = e.target.result;
+        const base64 = dataUrl.split(",")[1];
+        const payload = { token: UPLOAD_TOKEN, id, etapa, numero: docNum, filename, mimeType, base64 };
+
+        const btnSubmit = document.getElementById("modalSubmit");
+        const originalText = btnSubmit.textContent;
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = "Subiendo…";
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+        try {
+          const res = await fetch(UPLOAD_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payload),
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+
+          let data;
+          try {
+            data = await res.json();
+          } catch (err) {
+            throw new Error("no-json");
+          }
+
+          if (data && data.ok) {
+            const row = ROWS.find(r => r.id === id);
+            if (row) {
+              const st = row.stages[etapa];
+              st.url = data.url;
+              if (!st.label) st.label = docNum;
+              st.has = true;
+              calcRowStatus(row);
+              renderAll();
+            }
+
+            setModalAlert(`Documento subido. <a href="${data.url}" target="_blank" rel="noopener" style="color:#15803d;text-decoration:underline">Ver en Drive</a>`, false);
+            setTimeout(() => {
+              btnSubmit.disabled = false;
+              btnSubmit.textContent = originalText;
+              cerrarModal();
+            }, 2000);
+          } else {
+            setModalAlert(data?.error || "Error desconocido al subir", true);
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = originalText;
+          }
+        } catch (err) {
+          clearTimeout(timeoutId);
+          if (err.name === "AbortError") {
+            setModalAlert("El servidor tardó demasiado en responder (timeout de 60s).", true);
+          } else {
+            setModalAlert("No se pudo contactar el servidor", true);
+          }
           btnSubmit.disabled = false;
           btnSubmit.textContent = originalText;
-          cerrarModal();
-        }, 2000);
-      } else {
-        setModalAlert(data?.error || "Error desconocido al subir", true);
-        btnSubmit.disabled = false;
-        btnSubmit.textContent = originalText;
-      }
-    } catch (err) {
-      clearTimeout(timeoutId);
-      if (err.name === "AbortError") {
-        setModalAlert("El servidor tardó demasiado en responder (timeout de 60s).", true);
-      } else {
-        setModalAlert("No se pudo contactar el servidor", true);
-      }
-      btnSubmit.disabled = false;
-      btnSubmit.textContent = originalText;
-    }
-  };
-  reader.onerror = () => setModalAlert("Error al leer el archivo localmente.", true);
-  reader.readAsDataURL(file);
-};
+        }
+      };
+      reader.onerror = () => setModalAlert("Error al leer el archivo localmente.", true);
+      reader.readAsDataURL(file);
+    };
 
-window.__testModal = () => abrirModal();
+    window.__testModal = () => abrirModal();
 
-</script>
+  </script>
 </body>
+
 </html>
