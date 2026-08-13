@@ -1032,8 +1032,8 @@
     const SHEET_ID = "1g1MO7BAW4GwyM74vmR3s00_j8DEFh_QMZ2kUiIPMZ00";  // solo para el botón "abrir hoja"
     const SHEET_NAME = "CONTROL DE CARGAS";
     const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
-    const UPLOAD_TOKEN = "netso-prod-4t9w2k7m3x8q";
-    const UPLOAD_URL = "https://script.google.com/macros/s/AKfycbwI93pWOThAv08ZuvGWOQdDvkslhp4lDGbDrPR2fBHTcb46mCrzUExiVN05iUWlP4z4/exec";
+    const UPLOAD_TOKEN = "netso-pruebas-7k3m9x2q8f";
+    const UPLOAD_URL = "https://script.google.com/macros/s/AKfycbxunQr7hdyv2-pU95MeQl5ZsnlGJtlpbNa8Zqc7XxkAO_USJ5SjN3XUMLHgHRarnCK1jg/exec";
 
     /* URL de la hoja PUBLICADA (Archivo → Compartir → Publicar en la Web).
        Ojo: este ID (2PACX-…) es distinto al ID del documento. Si republicas la
@@ -1456,11 +1456,56 @@
       }).join("") + `</div>`;
     }
 
+    async function cambiarEstado(sel, id) {
+      const nuevo = sel.value;
+      const actual = sel.dataset.actual;
+      if (nuevo === actual) return;
+      if (!confirm(`¿Cambiar el estado de ${actual} a ${nuevo}?`)) {
+        sel.value = actual;
+        return;
+      }
+      sel.disabled = true;
+      try {
+        const res = await fetch(UPLOAD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ token: UPLOAD_TOKEN, accion: "cambiarEstado", id: id, estado: nuevo })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          const r = ROWS.find(x => x.id === id);
+          if (r) {
+            r.estadoRaw = nuevo;
+            r.estado = estadoKey(nuevo);
+            calcRowStatus(r);
+            renderAll();
+          }
+        } else {
+          alert("Error: " + (data.error || "Desconocido"));
+          sel.value = actual;
+        }
+      } catch (e) {
+        alert("Error de red: " + e.message);
+        sel.value = actual;
+      } finally {
+        sel.disabled = false;
+      }
+    }
+
     function detailHTML(r) {
       const kv = (k, v) => `<div><div class="dg-k">${k}</div><div class="dg-v">${v || "—"}</div></div>`;
+
+      let estCtrl = stateTag(r);
+      if (r.id) {
+        const opts = ["En produccion", "En espera de despacho", "En camino", "Proc. Nacionalización", "Recibido", "Indefinido"];
+        const optHTML = opts.map(o => `<option value="${o}" ${r.estadoRaw === o ? "selected" : ""}>${o}</option>`).join("");
+        estCtrl += ` <select class="fld" style="padding:2px 6px; font-size:12px; height:24px; width:auto; display:inline-block; margin-left:8px;" onchange="cambiarEstado(this, '${esc(r.id)}')" data-actual="${esc(r.estadoRaw)}">${optHTML}</select>`;
+      }
+
       return `<div class="dwrap">
     ${timelineHTML(r)}
     <div class="dgrid">
+      ${kv("Estado", estCtrl)}
       ${kv("Proveedor", esc(r.prov))}
       ${kv("Fecha PI/INV", fmtDate(r.fecha))}
       ${kv("ETD (zarpe)", fmtDate(r.stages.etd.date))}
