@@ -994,12 +994,12 @@
       <button id="modalCloseX"
         style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;line-height:1;cursor:pointer;color:var(--muted);padding:0;">&times;</button>
       
+      <div id="modalAlert"
+        style="display:none; font-size:13px; font-weight:600; padding:10px 14px; border-radius:9px; margin-bottom:16px;">
+      </div>
+
       <div id="modalStep1">
         <h3 style="margin:0 0 16px;font-size:19px">Subir documento</h3>
-
-        <div id="modalAlert"
-          style="display:none; font-size:13px; font-weight:600; padding:10px 14px; border-radius:9px; margin-bottom:16px;">
-        </div>
 
         <div
           style="margin-bottom:18px;font-size:14px;background:var(--bg);padding:12px;border-radius:9px;border:1px solid var(--line);">
@@ -1316,6 +1316,15 @@
         cont: find(["Container ID", "Contenedor", "Container"]),
         agente: find(["Agente aduanal", "Agente Aduanal", "Agente"]),
         id: find(["ID"]),
+        subtotal: find(["Subtotal"]),
+        total: find(["Total"]),
+        anticipoPct: find(["Anticipo (%)", "Anticipo", "Anticipo %"]),
+        totalAnticipo: find(["Total Anticipo"]),
+        porPagar: find(["Por Pagar"]),
+        termCredito: find(["Terminos de credito", "Términos de crédito", "Terminos de crédito"]),
+        obs: find(["Observaciones"]),
+        fechaPago: find(["Fecha de pago", "Fecha de pago PI", "Fecha pago"]),
+        pagoPiUrl: find(["Pago PI URL", "URL de pago PI", "Pago PI"]),
       };
       // Índices por etapa
       const sIdx = {};
@@ -1387,6 +1396,15 @@
           agente: get(r, col.agente),
           id: get(r, col.id),   // identificador estable de la Fase 0
           stages,
+          subtotal: get(r, col.subtotal),
+          total: get(r, col.total),
+          anticipoPct: get(r, col.anticipoPct),
+          totalAnticipo: get(r, col.totalAnticipo),
+          porPagar: get(r, col.porPagar),
+          termCredito: get(r, col.termCredito),
+          obs: get(r, col.obs),
+          fechaPago: pdate(get(r, col.fechaPago)),
+          pagoPiUrl: getLink(col.pagoPiUrl) || (isUrl(get(r, col.pagoPiUrl)) ? get(r, col.pagoPiUrl) : ""),
         };
         // solo documentos: ETD/ETA nunca cuentan como faltante
         calcRowStatus(row);
@@ -1547,6 +1565,10 @@
         estCtrl += ` <select class="fld" style="padding:2px 6px; font-size:12px; height:24px; width:auto; display:inline-block; margin-left:8px;" onchange="cambiarEstado(this, '${esc(r.id)}')" data-actual="${esc(r.estadoRaw)}">${optHTML}</select>`;
       }
 
+      const antMonto = esc(r.totalAnticipo);
+      const antPct = esc(r.anticipoPct);
+      const antStr = (antMonto && antPct) ? `${antMonto} (${antPct})` : (antMonto || antPct || "—");
+
       return `<div class="dwrap">
     ${timelineHTML(r)}
     <div class="dgrid">
@@ -1559,6 +1581,16 @@
         ? `<a href="${esc(r.contUrl)}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">${esc(r.cont)} ↗</a>`
         : esc(r.cont))}
       ${kv("Agente aduanal", esc(r.agente))}
+      ${kv("Total", esc(r.total))}
+      ${kv("Anticipo", antStr !== "—" ? antStr : "")}
+      ${kv("Por Pagar", esc(r.porPagar))}
+      ${kv("Términos de crédito", esc(r.termCredito))}
+      ${kv("Fecha de pago", fmtDate(r.fechaPago))}
+      ${kv("Comprobante", r.pagoPiUrl ? `<a href="${esc(r.pagoPiUrl)}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">Ver comprobante ↗</a>` : "")}
+      <div style="grid-column: 1 / -1; margin-top: 4px;">
+        <div class="dg-k">Observaciones</div>
+        <div class="dg-v" style="margin-top:4px; white-space:pre-wrap;">${esc(r.obs) || "—"}</div>
+      </div>
     </div>
   </div>`;
     }
@@ -2087,7 +2119,7 @@
 
     document.getElementById("piCancel").onclick = cerrarModal;
 
-    document.getElementById("piSubmit").onclick = () => {
+    document.getElementById("piSubmit").onclick = async () => {
       const sub = parseFloat(document.getElementById("piSubtotal").value);
       const antVal = parseFloat(document.getElementById("piAnticipoVal").value);
       const tipo = document.getElementById("piAnticipoTipo").value;
@@ -2099,20 +2131,151 @@
 
       const provSel = document.getElementById("piProvSel").value;
       const provOtro = document.getElementById("piProvOtro").value.trim();
+      const provFinal = provSel === "Otro" ? provOtro : provSel;
+
+      const modal = document.getElementById("uploadModal");
+      const id = modal.dataset.rid;
+      const terminos = document.getElementById("piTerminos").value.trim();
       
-      const payload = {
-        subtotal: isNaN(sub) ? null : sub,
-        anticipoVal: isNaN(antVal) ? null : antVal,
-        anticipoTipo: tipo,
-        proveedor: provSel === "Otro" ? provOtro : provSel,
-        terminos: document.getElementById("piTerminos").value.trim(),
-        comprobante: document.getElementById("piComprobante").files[0] ? document.getElementById("piComprobante").files[0].name : null,
-        fechaPago: document.getElementById("piFechaPago").value,
-        obs: document.getElementById("piObs").value.trim()
-      };
-      
-      console.log("Datos del PI a guardar:", payload);
-      cerrarModal();
+      let anticipoPct;
+      if (!isNaN(antVal) && antVal > 0) {
+        if (tipo === "%") {
+          anticipoPct = antVal / 100;
+        } else if (tipo === "$" && !isNaN(sub) && sub > 0) {
+          anticipoPct = antVal / sub;
+        }
+        if (anticipoPct !== undefined) {
+          anticipoPct = parseFloat(anticipoPct.toFixed(4));
+        }
+      }
+
+      const rawFecha = document.getElementById("piFechaPago").value;
+      let fechaPago;
+      if (rawFecha) {
+        const parts = rawFecha.split("-");
+        if (parts.length === 3) fechaPago = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+
+      const obs = document.getElementById("piObs").value.trim();
+
+      const payload = { token: UPLOAD_TOKEN, accion: "guardarDatosPI", id };
+      if (!isNaN(sub) && sub > 0) payload.subtotal = sub;
+      if (anticipoPct !== undefined) payload.anticipoPct = anticipoPct;
+      if (provFinal) payload.proveedor = provFinal;
+      if (terminos) payload.terminos = terminos;
+      if (fechaPago) payload.fechaPago = fechaPago;
+      if (obs) payload.observaciones = obs;
+
+      const fileInput = document.getElementById("piComprobante");
+      const file = fileInput.files[0];
+
+      const btnSubmit = document.getElementById("piSubmit");
+      const originalText = btnSubmit.textContent;
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = "Guardando…";
+      setModalAlert("", false);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+      try {
+        const res = await fetch(UPLOAD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        let data;
+        try { data = await res.json(); } catch(e) { throw new Error("no-json"); }
+
+        if (data && data.ok) {
+          if (provFinal) {
+            const row = ROWS.find(r => r.id === id);
+            if (row && row.prov !== provFinal) {
+              row.prov = provFinal;
+              renderAll();
+            }
+          }
+
+          if (!file) {
+            setModalAlert("Datos guardados correctamente.", false);
+            setTimeout(() => {
+              btnSubmit.disabled = false;
+              btnSubmit.textContent = originalText;
+              cerrarModal();
+            }, 2000);
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = async e => {
+            const dataUrl = e.target.result;
+            const base64 = dataUrl.split(",")[1];
+            const payloadDoc = {
+              token: UPLOAD_TOKEN,
+              accion: "subirDoc",
+              id,
+              etapa: "pagoPI",
+              filename: file.name,
+              mimeType: file.type,
+              base64
+            };
+
+            const controller2 = new AbortController();
+            const timeoutId2 = setTimeout(() => controller2.abort(), 60000);
+
+            try {
+              const res2 = await fetch(UPLOAD_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(payloadDoc),
+                signal: controller2.signal
+              });
+              clearTimeout(timeoutId2);
+              
+              let data2;
+              try { data2 = await res2.json(); } catch(err) { throw new Error("no-json"); }
+
+              if (data2 && data2.ok) {
+                setModalAlert("Datos y comprobante guardados correctamente.", false);
+                setTimeout(() => {
+                  btnSubmit.disabled = false;
+                  btnSubmit.textContent = originalText;
+                  cerrarModal();
+                }, 2000);
+              } else {
+                setModalAlert("Los datos se guardaron, pero el comprobante no se pudo subir.", true);
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = originalText;
+              }
+            } catch (err2) {
+              clearTimeout(timeoutId2);
+              setModalAlert("Los datos se guardaron, pero el comprobante no se pudo subir.", true);
+              btnSubmit.disabled = false;
+              btnSubmit.textContent = originalText;
+            }
+          };
+          reader.onerror = () => {
+            setModalAlert("Los datos se guardaron, pero el comprobante no se pudo leer localmente.", true);
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = originalText;
+          };
+          reader.readAsDataURL(file);
+
+        } else {
+          setModalAlert(data?.error || "Error al guardar los datos del PI", true);
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = originalText;
+        }
+
+      } catch (err) {
+        clearTimeout(timeoutId);
+        setModalAlert("Error de red al intentar guardar los datos del PI.", true);
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = originalText;
+      }
     };
 
     window.__testModal = () => abrirModal();
