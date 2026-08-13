@@ -1833,6 +1833,28 @@
         return res.text();
       };
 
+      // 0) API backend
+      try {
+        const res = await fetch(UPLOAD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ token: UPLOAD_TOKEN, accion: "leer" })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.ok && data.filas) {
+            const rows = normalize(data.matriz, data.links);
+            if (rows.length) {
+              ROWS = rows;
+              const conLink = ROWS.reduce((a, r) => a + STAGES.filter(s => r.stages[s.key].url).length, 0);
+              statusUI("ok", `En vivo (API) · ${ROWS.length} cargas · ${conLink} documentos con link · ${hora()}`);
+              renderAll();
+              return;
+            }
+          }
+        }
+      } catch (e) { console.warn("Lectura API falló:", e.message); }
+
       // 1) HTML publicado (trae los hipervínculos). Primero por el proxy, luego directo.
       for (const src of [PROXY_HTML, htmlUrl()]) {
         try {
