@@ -105,9 +105,9 @@ Estas y solo estas modificaciones a código protegido están permitidas:
   campos que ya lee.
 - `timelineHTML` y `detailHTML`: pueden añadir controles y campos nuevos. No
   cambies cómo se pintan las etapas ni sus clases CSS.
-- `loadLive`: puede añadir un intento NUEVO de lectura al principio de la
-  cadena, sin eliminar ni modificar ninguno de los intentos existentes, que
-  siguen siendo el respaldo.
+- `loadLive`: además de añadir intentos, puede reordenar la secuencia de
+  lectura y lanzar varias fuentes en paralelo, siempre que se conserven TODAS
+  las fuentes existentes como respaldo.
 
 Cualquier otra modificación a la lista de funciones y constantes protegidas
 sigue prohibida. Si una tarea parece exigirla, detente y pregunta.
