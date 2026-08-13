@@ -999,7 +999,7 @@
       onclick="event.stopPropagation()">
       <button id="modalCloseX"
         style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;line-height:1;cursor:pointer;color:var(--muted);padding:0;">&times;</button>
-      
+
       <div id="modalAlert"
         style="display:none; font-size:13px; font-weight:600; padding:10px 14px; border-radius:9px; margin-bottom:16px;">
       </div>
@@ -1060,13 +1060,15 @@
         </div>
         <div class="fld" style="margin-bottom:16px">
           <label for="piComprobante">Comprobante de pago</label>
-          <input type="file" id="piComprobante" accept=".pdf,.jpg,.jpeg,.png" style="padding:6px;background:#fff;margin-bottom:8px" />
+          <input type="file" id="piComprobante" accept=".pdf,.jpg,.jpeg,.png"
+            style="padding:6px;background:#fff;margin-bottom:8px" />
           <label for="piFechaPago">Fecha de pago</label>
           <input type="date" id="piFechaPago" />
         </div>
         <div class="fld" style="margin-bottom:24px">
           <label for="piObs">Observaciones</label>
-          <textarea id="piObs" rows="3" style="width:100%;resize:vertical;border:1px solid var(--line);border-radius:6px;padding:8px;font-family:inherit;font-size:14px;"></textarea>
+          <textarea id="piObs" rows="3"
+            style="width:100%;resize:vertical;border:1px solid var(--line);border-radius:6px;padding:8px;font-family:inherit;font-size:14px;"></textarea>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button id="piCancel" class="btn btn-ghost">Ahora no</button>
@@ -1084,7 +1086,7 @@
       onclick="event.stopPropagation()">
       <button id="ncCloseX"
         style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;line-height:1;cursor:pointer;color:var(--muted);padding:0;">&times;</button>
-      
+
       <div id="ncAlert"
         style="display:none; font-size:13px; font-weight:600; padding:10px 14px; border-radius:9px; margin-bottom:16px;">
       </div>
@@ -1129,8 +1131,8 @@
     const SHEET_ID = "1g1MO7BAW4GwyM74vmR3s00_j8DEFh_QMZ2kUiIPMZ00";  // solo para el botón "abrir hoja"
     const SHEET_NAME = "CONTROL DE CARGAS";
     const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
-    const UPLOAD_TOKEN = "netso-pruebas-7k3m9x2q8f";
-    const UPLOAD_URL = "https://script.google.com/macros/s/AKfycbxunQr7hdyv2-pU95MeQl5ZsnlGJtlpbNa8Zqc7XxkAO_USJ5SjN3XUMLHgHRarnCK1jg/exec";
+    const UPLOAD_TOKEN = "netso-prod-4t9w2k7m3x8q";
+    const UPLOAD_URL = "https://script.google.com/macros/s/AKfycbwI93pWOThAv08ZuvGWOQdDvkslhp4lDGbDrPR2fBHTcb46mCrzUExiVN05iUWlP4z4/exec";
 
     /* URL de la hoja PUBLICADA (Archivo → Compartir → Publicar en la Web).
        Ojo: este ID (2PACX-…) es distinto al ID del documento. Si republicas la
@@ -1979,17 +1981,17 @@
     document.getElementById("btnNewCarga").onclick = () => {
       const modal = document.getElementById("newCargaModal");
       const selProv = document.getElementById("ncProvSel");
-      
-      const provs = [...new Set(ROWS.map(r => r.prov))].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b)));
+
+      const provs = [...new Set(ROWS.map(r => r.prov))].filter(Boolean).sort((a, b) => String(a).localeCompare(String(b)));
       selProv.innerHTML = provs.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join("") + `<option value="Otro">Otro</option>`;
-      
+
       selProv.value = provs[0] || "Otro";
       document.getElementById("ncProvOtro").style.display = selProv.value === "Otro" ? "block" : "none";
       document.getElementById("ncProvOtro").value = "";
-      
+
       document.getElementById("ncFecha").value = new Date().toISOString().split('T')[0];
       document.getElementById("ncEstado").value = "En cotización";
-      
+
       setNcAlert("", false);
       modal.style.display = "flex";
     };
@@ -2010,18 +2012,18 @@
       const prov = provSel === "Otro" ? document.getElementById("ncProvOtro").value.trim() : provSel;
       const rawFecha = document.getElementById("ncFecha").value;
       const estadoRaw = document.getElementById("ncEstado").value;
-      
+
       if (!prov) {
         setNcAlert("Proveedor es obligatorio.", true);
         return;
       }
-      
+
       setNcAlert("", false);
       const btn = document.getElementById("ncSubmit");
       const oldText = btn.textContent;
       btn.disabled = true;
       btn.textContent = "Creando...";
-      
+
       const payload = {
         token: UPLOAD_TOKEN,
         accion: "crearCarga",
@@ -2029,7 +2031,7 @@
         fecha: rawFecha,
         estado: estadoRaw
       };
-      
+
       try {
         const resp = await fetch(UPLOAD_URL, {
           method: "POST",
@@ -2038,16 +2040,16 @@
         });
         if (!resp.ok) throw new Error("Error HTTP " + resp.status);
         const data = await resp.json();
-        
+
         if (!data.ok) throw new Error(data.error || "Error al crear la carga");
-        
+
         const fechaParsed = pdate(rawFecha.split('-').reverse().join('/'));
 
         const stages = {};
         STAGES.forEach(st => {
           stages[st.key] = { has: false, label: "", url: "", date: null };
         });
-        
+
         const row = {
           i: ROWS.length + 1,
           fecha: fechaParsed,
@@ -2071,7 +2073,7 @@
         };
         calcRowStatus(row);
         ROWS.push(row);
-        
+
         OPEN_ROW = data.id;
         renderAll();
         closeNcModal();
@@ -2196,14 +2198,14 @@
             if (etapa === "pi") {
               document.getElementById("modalStep1").style.display = "none";
               document.getElementById("modalStep2").style.display = "block";
-              
+
               const rowData = ROWS.find(r => r.id === id);
               document.getElementById("piSubtotal").value = rowData?.subtotal || "";
-              
+
               const selProv = document.getElementById("piProvSel");
-              const provs = [...new Set(ROWS.map(r => r.prov))].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b)));
+              const provs = [...new Set(ROWS.map(r => r.prov))].filter(Boolean).sort((a, b) => String(a).localeCompare(String(b)));
               selProv.innerHTML = provs.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join("") + `<option value="Otro">Otro</option>`;
-              
+
               if (rowData?.prov && provs.includes(rowData.prov)) {
                 selProv.value = rowData.prov;
               } else {
@@ -2211,7 +2213,7 @@
               }
               document.getElementById("piProvOtro").style.display = selProv.value === "Otro" ? "block" : "none";
               document.getElementById("piProvOtro").value = "";
-              
+
               document.getElementById("piAnticipoVal").value = "";
               document.getElementById("piAnticipoTipo").value = "%";
               document.getElementById("piResumen").textContent = "";
@@ -2219,7 +2221,7 @@
               document.getElementById("piComprobante").value = "";
               document.getElementById("piFechaPago").value = new Date().toISOString().split('T')[0];
               document.getElementById("piObs").value = "";
-              
+
               btnSubmit.disabled = false;
               btnSubmit.textContent = originalText;
             } else {
@@ -2259,7 +2261,7 @@
       const antVal = parseFloat(document.getElementById("piAnticipoVal").value);
       const tipo = document.getElementById("piAnticipoTipo").value;
       const res = document.getElementById("piResumen");
-      
+
       if (isNaN(sub) || sub <= 0) {
         if (tipo === "$" && !isNaN(antVal) && antVal > 0) {
           res.textContent = "Escribe primero el subtotal para poder calcular el porcentaje";
@@ -2268,7 +2270,7 @@
         }
         return;
       }
-      
+
       if (isNaN(antVal) || antVal <= 0) {
         res.textContent = `Total del PI: $${sub.toFixed(2)}`;
         return;
@@ -2296,7 +2298,7 @@
       const sub = parseFloat(document.getElementById("piSubtotal").value);
       const antVal = parseFloat(document.getElementById("piAnticipoVal").value);
       const tipo = document.getElementById("piAnticipoTipo").value;
-      
+
       if (tipo === "$" && !isNaN(antVal) && antVal > 0 && (isNaN(sub) || sub <= 0)) {
         alert("Escribe primero el subtotal para poder calcular el porcentaje");
         return;
@@ -2309,7 +2311,7 @@
       const modal = document.getElementById("uploadModal");
       const id = modal.dataset.rid;
       const terminos = document.getElementById("piTerminos").value.trim();
-      
+
       let anticipoPct;
       if (!isNaN(antVal) && antVal > 0) {
         if (tipo === "%") {
@@ -2359,9 +2361,9 @@
           signal: controller.signal
         });
         clearTimeout(timeoutId);
-        
+
         let data;
-        try { data = await res.json(); } catch(e) { throw new Error("no-json"); }
+        try { data = await res.json(); } catch (e) { throw new Error("no-json"); }
 
         if (data && data.ok) {
           if (provFinal) {
@@ -2407,9 +2409,9 @@
                 signal: controller2.signal
               });
               clearTimeout(timeoutId2);
-              
+
               let data2;
-              try { data2 = await res2.json(); } catch(err) { throw new Error("no-json"); }
+              try { data2 = await res2.json(); } catch (err) { throw new Error("no-json"); }
 
               if (data2 && data2.ok) {
                 setModalAlert("Datos y comprobante guardados correctamente.", false);
