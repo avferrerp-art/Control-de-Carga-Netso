@@ -1599,6 +1599,7 @@
             calcRowStatus(r);
             renderAll();
           }
+          refrescarDesdeBackend();
         } else {
           alert("Error: " + (data.error || "Desconocido"));
           sel.value = actual;
@@ -1900,6 +1901,29 @@
       }
     }
 
+    async function refrescarDesdeBackend() {
+      try {
+        const res = await fetch(UPLOAD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ token: UPLOAD_TOKEN, accion: "leer" })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.ok && data.filas) {
+            const rows = normalize(data.matriz, data.links);
+            if (rows.length) {
+              const oldOpen = OPEN_ROW;
+              ROWS = rows;
+              OPEN_ROW = oldOpen;
+              renderAll();
+            }
+          }
+        }
+      } catch (e) {
+      }
+    }
+
     /* sheet_to_json descarta los hipervínculos. Recorriendo las celdas a mano
        sí se leen: SheetJS los deja en cell.l.Target. Un .xlsx bajado de Google
        Sheets conserva los links, así que esta ruta funciona igual que la online. */
@@ -2099,6 +2123,7 @@
         OPEN_ROW = data.id;
         renderAll();
         closeNcModal();
+        refrescarDesdeBackend();
       } catch (err) {
         console.error(err);
         setNcAlert(err.message, true);
@@ -2216,6 +2241,7 @@
               calcRowStatus(row);
               renderAll();
             }
+            refrescarDesdeBackend();
 
             if (etapa === "pi") {
               document.getElementById("modalStep1").style.display = "none";
@@ -2398,6 +2424,7 @@
 
           if (!file) {
             setModalAlert("Datos guardados correctamente.", false);
+            refrescarDesdeBackend();
             setTimeout(() => {
               btnSubmit.disabled = false;
               btnSubmit.textContent = originalText;
@@ -2437,6 +2464,7 @@
 
               if (data2 && data2.ok) {
                 setModalAlert("Datos y comprobante guardados correctamente.", false);
+                refrescarDesdeBackend();
                 setTimeout(() => {
                   btnSubmit.disabled = false;
                   btnSubmit.textContent = originalText;
@@ -2444,12 +2472,14 @@
                 }, 2000);
               } else {
                 setModalAlert("Los datos se guardaron, pero el comprobante no se pudo subir.", true);
+                refrescarDesdeBackend();
                 btnSubmit.disabled = false;
                 btnSubmit.textContent = originalText;
               }
             } catch (err2) {
               clearTimeout(timeoutId2);
               setModalAlert("Los datos se guardaron, pero el comprobante no se pudo subir.", true);
+              refrescarDesdeBackend();
               btnSubmit.disabled = false;
               btnSubmit.textContent = originalText;
             }
