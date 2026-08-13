@@ -1848,59 +1848,84 @@
         return res.text();
       };
 
-      // 0) API backend
-      try {
-        const res = await fetch(UPLOAD_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify({ token: UPLOAD_TOKEN, accion: "leer" })
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.ok && data.filas) {
-            const rows = normalize(data.matriz, data.links);
-            if (rows.length) {
-              ROWS = rows;
-              const conLink = ROWS.reduce((a, r) => a + STAGES.filter(s => r.stages[s.key].url).length, 0);
-              statusUI("ok", `En vivo (API) · ${ROWS.length} cargas · ${conLink} documentos con link · ${hora()}`);
-              renderAll();
-              return;
-            }
+      let apiYaPinto = false;
+
+      const updateRows = (newRows) => {
+        let preserveI = OPEN_ROW;
+        if (OPEN_ROW) {
+          const oldR = ROWS.find(r => r.i === OPEN_ROW);
+          if (oldR && oldR.id) {
+            const match = newRows.find(r => r.id === oldR.id);
+            if (match) preserveI = match.i;
           }
         }
-      } catch (e) { console.warn("Lectura API falló:", e.message); }
+        ROWS = newRows;
+        OPEN_ROW = preserveI;
+      };
+
+      // 0) API backend
+      const fetchApi = async () => {
+        try {
+          const res = await fetch(UPLOAD_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ token: UPLOAD_TOKEN, accion: "leer" })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.ok && data.filas) {
+              const rows = normalize(data.matriz, data.links);
+              if (rows.length) {
+                apiYaPinto = true;
+                updateRows(rows);
+                const conLink = ROWS.reduce((a, r) => a + STAGES.filter(s => r.stages[s.key].url).length, 0);
+                statusUI("ok", `En vivo (API) · ${ROWS.length} cargas · ${conLink} documentos con link · ${hora()}`);
+                renderAll();
+                return true;
+              }
+            }
+          }
+        } catch (e) { console.warn("Lectura API falló:", e.message); }
+        return false;
+      };
 
       // 1) HTML publicado (trae los hipervínculos). Primero por el proxy, luego directo.
-      for (const src of [PROXY_HTML, htmlUrl()]) {
-        try {
-          const { matrix, links } = parsePubHtml(await grab(src));
-          const rows = normalize(matrix, links);
-          if (!rows.length) throw new Error("sin filas");
-          ROWS = rows;
-          const conLink = ROWS.reduce((a, r) => a + STAGES.filter(s => r.stages[s.key].url).length, 0);
-          statusUI("ok", `En vivo · ${ROWS.length} cargas · ${conLink} documentos con link · ${hora()}`);
-          renderAll();
-          return;
-        } catch (e) { console.warn("HTML vía", src, "falló:", e.message); }
-      }
+      const fetchSheet = async () => {
+        let last = "";
+        for (const src of [PROXY_HTML, htmlUrl()]) {
+          try {
+            const { matrix, links } = parsePubHtml(await grab(src));
+            const rows = normalize(matrix, links);
+            if (!rows.length) throw new Error("sin filas");
+            if (apiYaPinto) return true;
+            updateRows(rows);
+            const conLink = ROWS.reduce((a, r) => a + STAGES.filter(s => r.stages[s.key].url).length, 0);
+            statusUI("ok", `En vivo · ${ROWS.length} cargas · ${conLink} documentos con link · ${hora()}`);
+            renderAll();
+            return true;
+          } catch (e) { console.warn("HTML vía", src, "falló:", e.message); }
+        }
 
-      // 2) CSV publicado: mismos datos pero sin links
-      let last = "";
-      for (const src of [PROXY_CSV, csvUrl()]) {
-        try {
-          const text = await grab(src);
-          if (/<html/i.test(text)) throw new Error("respuesta no es CSV");
-          const rows = normalize(parseCSV(text));
-          if (!rows.length) throw new Error("sin filas");
-          ROWS = rows;
-          statusUI("off", `En vivo (CSV, sin links) · ${ROWS.length} cargas · ${hora()}`);
-          renderAll();
-          return;
-        } catch (e) { last = e.message; console.warn("CSV vía", src, "falló:", e.message); }
-      }
+        // 2) CSV publicado: mismos datos pero sin links
+        for (const src of [PROXY_CSV, csvUrl()]) {
+          try {
+            const text = await grab(src);
+            if (/<html/i.test(text)) throw new Error("respuesta no es CSV");
+            const rows = normalize(parseCSV(text));
+            if (!rows.length) throw new Error("sin filas");
+            if (apiYaPinto) return true;
+            updateRows(rows);
+            statusUI("off", `En vivo (CSV, sin links) · ${ROWS.length} cargas · ${hora()}`);
+            renderAll();
+            return true;
+          } catch (e) { last = e.message; console.warn("CSV vía", src, "falló:", e.message); }
+        }
+        return last || "no se pudo contactar la hoja";
+      };
 
-      {
-        const e = { message: last || "no se pudo contactar la hoja" };
+      const [apiOk, sheetResult] = await Promise.all([fetchApi(), fetchSheet()]);
+
+      if (!apiOk && sheetResult !== true) {
         statusUI("err", "Sin conexión a la hoja");
         const local = location.protocol === "file:";
         showError(local
@@ -1909,7 +1934,7 @@
          La hoja está bien publicada; es una restricción del navegador.<br>
          <b>Solución:</b> usa el botón <b>Subir Excel</b> de arriba — trae los mismos datos <i>y</i> los links.
          En el Sheet: <b>Archivo → Descargar → Microsoft Excel (.xlsx)</b>.`
-          : `<b>No se pudo leer la hoja publicada.</b> ${esc(e.message)}. Revisa que siga publicada en
+          : `<b>No se pudo leer la hoja publicada.</b> ${esc(sheetResult)}. Revisa que siga publicada en
          <b>Archivo → Compartir → Publicar en la Web</b>, o usa <b>Subir Excel</b>.`);
         loadDemo();
       }
