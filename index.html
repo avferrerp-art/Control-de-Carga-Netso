@@ -1093,7 +1093,7 @@
       </div>
 
       <div class="fld" style="margin-bottom:16px">
-        <label for="ncPiNum">PI No <span style="color:var(--red)">*</span></label>
+        <label for="ncPiNum">PI No (opcional)</label>
         <input type="text" id="ncPiNum" />
       </div>
 
@@ -2015,29 +2015,93 @@
     document.getElementById("ncCancel").onclick = closeNcModal;
     document.getElementById("newCargaModal").onclick = closeNcModal;
 
-    document.getElementById("ncSubmit").onclick = () => {
+    document.getElementById("ncSubmit").onclick = async () => {
       const provSel = document.getElementById("ncProvSel").value;
       const prov = provSel === "Otro" ? document.getElementById("ncProvOtro").value.trim() : provSel;
       const piNum = document.getElementById("ncPiNum").value.trim();
+      const rawFecha = document.getElementById("ncFecha").value;
+      const estadoRaw = document.getElementById("ncEstado").value;
+      const agente = document.getElementById("ncAgente").value.trim();
+      const contenedor = document.getElementById("ncContenedor").value.trim();
       
-      if (!prov || !piNum) {
-        setNcAlert("Proveedor y PI No son obligatorios.", true);
+      if (!prov) {
+        setNcAlert("Proveedor es obligatorio.", true);
         return;
       }
       
       setNcAlert("", false);
+      const btn = document.getElementById("ncSubmit");
+      const oldText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Creando...";
       
-      const carga = {
+      const payload = {
+        token: UPLOAD_TOKEN,
+        accion: "crearCarga",
         proveedor: prov,
-        piNum: piNum,
-        fecha: document.getElementById("ncFecha").value,
-        estado: document.getElementById("ncEstado").value,
-        agente: document.getElementById("ncAgente").value.trim(),
-        contenedor: document.getElementById("ncContenedor").value.trim()
+        fecha: rawFecha,
+        estado: estadoRaw
       };
+      if (piNum) payload.piNo = piNum;
+      if (agente) payload.agente = agente;
+      if (contenedor) payload.contenedor = contenedor;
       
-      console.log("Nueva carga:", carga);
-      closeNcModal();
+      try {
+        const resp = await fetch(UPLOAD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+        if (!resp.ok) throw new Error("Error HTTP " + resp.status);
+        const data = await resp.json();
+        
+        if (!data.ok) throw new Error(data.error || "Error al crear la carga");
+        
+        const fechaParsed = pdate(rawFecha.split('-').reverse().join('/'));
+
+        const stages = {};
+        STAGES.forEach(st => {
+          if (st.key === "pi" && piNum) {
+            stages[st.key] = { has: true, label: piNum, url: "", date: fechaParsed };
+          } else {
+            stages[st.key] = { has: false, label: "", url: "", date: null };
+          }
+        });
+        
+        const row = {
+          i: ROWS.length + 1,
+          fecha: fechaParsed,
+          estado: estadoKey(estadoRaw),
+          estadoRaw: estadoRaw,
+          prov: prov,
+          cont: contenedor,
+          contUrl: "",
+          agente: agente,
+          id: data.id,
+          stages: stages,
+          subtotal: "",
+          total: "",
+          anticipoPct: "",
+          totalAnticipo: "",
+          porPagar: "",
+          termCredito: "",
+          obs: "",
+          fechaPago: null,
+          pagoPiUrl: ""
+        };
+        calcRowStatus(row);
+        ROWS.push(row);
+        
+        OPEN_ROW = data.id;
+        renderAll();
+        closeNcModal();
+      } catch (err) {
+        console.error(err);
+        setNcAlert(err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = oldText;
+      }
     };
 
     /* ====== MODAL DE SUBIDA ====== */

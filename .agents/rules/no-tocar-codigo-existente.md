@@ -90,15 +90,21 @@ respuesta.
 
 Estas y solo estas modificaciones a código protegido están permitidas:
 
-- `estadoKey`: añadir el reconocimiento del estado "En espera de despacho"
-  devolviendo la clave `espera`. No cambies el reconocimiento de ningún otro
+- `estadoKey`: añadir el reconocimiento de los estados "En espera de despacho"
+  (clave `espera`) y "En cotización" (clave `cotizacion`, buscando "cotiz" para
+  que funcione con o sin tilde). No cambies el reconocimiento de ningún otro
   estado.
-- `REQUIRED`: añadir la entrada `espera: ["pi","inv","pl"]`. No modifiques
-  ninguna de las entradas que ya existen.
-- `normalize`: puede llamar a la función auxiliar de recálculo ya existente.
-  Nada más.
-- `timelineHTML` y `detailHTML`: pueden añadir controles nuevos. No cambies
-  cómo se pintan las etapas ni sus clases CSS.
+- `REQUIRED`: añadir las entradas `espera: ["pi","inv","pl"]` y
+  `cotizacion: []` (lista vacía a propósito: en esa fase no se exige ningún
+  documento). No modifiques ninguna de las entradas que ya existen.
+- `stateTag`: añadir al mapa de clases las claves `espera` y `cotizacion`,
+  conservando todas las existentes.
+- `normalize`: puede llamar a la función auxiliar de recálculo, y puede añadir
+  la lectura de columnas nuevas y campos nuevos al objeto de cada fila. NO
+  puede cambiar la lógica de `stages`, `missing` ni `sem`, ni alterar los
+  campos que ya lee.
+- `timelineHTML` y `detailHTML`: pueden añadir controles y campos nuevos. No
+  cambies cómo se pintan las etapas ni sus clases CSS.
 
 Cualquier otra modificación a la lista de funciones y constantes protegidas
 sigue prohibida. Si una tarea parece exigirla, detente y pregunta.
