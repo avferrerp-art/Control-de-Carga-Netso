@@ -85,3 +85,20 @@ Dime, en una lista corta:
 
 Si modificaste algo de las listas de arriba, dilo en la PRIMERA línea de tu
 respuesta.
+
+## Excepciones autorizadas (Fase 2)
+
+Estas y solo estas modificaciones a código protegido están permitidas:
+
+- `estadoKey`: añadir el reconocimiento del estado "En espera de despacho"
+  devolviendo la clave `espera`. No cambies el reconocimiento de ningún otro
+  estado.
+- `REQUIRED`: añadir la entrada `espera: ["pi","inv","pl"]`. No modifiques
+  ninguna de las entradas que ya existen.
+- `normalize`: puede llamar a la función auxiliar de recálculo ya existente.
+  Nada más.
+- `timelineHTML` y `detailHTML`: pueden añadir controles nuevos. No cambies
+  cómo se pintan las etapas ni sus clases CSS.
+
+Cualquier otra modificación a la lista de funciones y constantes protegidas
+sigue prohibida. Si una tarea parece exigirla, detente y pregunta.
