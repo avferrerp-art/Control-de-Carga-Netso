@@ -519,6 +519,11 @@
       color: #92400e
     }
 
+    .st.espera {
+      background: #ffedd5;
+      color: #9a3412
+    }
+
     .st.indef {
       background: #fee2e2;
       color: #991b1b
@@ -527,6 +532,11 @@
     .st.na {
       background: #f1f5f9;
       color: #475569
+    }
+
+    .st.cotizacion {
+      background: #f3f4f6;
+      color: #374151
     }
 
     /* Track (7 pasos compactos) */
@@ -834,6 +844,7 @@
     <!-- HEADER -->
     <div class="head-outer">
       <div class="actions">
+        <button class="btn btn-ghost" id="btnNewCarga">+ Nueva carga</button>
         <button class="btn btn-ghost" id="btnUpload">Subir Excel</button>
         <button class="btn btn-primary" id="btnReload">Actualizar</button>
         <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" />
@@ -984,38 +995,131 @@
   <div id="uploadModal"
     style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.6);z-index:999;align-items:center;justify-content:center;backdrop-filter:blur(2px)">
     <div
-      style="background:var(--card);border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:0 10px 25px rgba(0,0,0,0.1);position:relative;border:1px solid var(--line)"
+      style="background:var(--card);border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:0 10px 25px rgba(0,0,0,0.1);position:relative;border:1px solid var(--line);max-height:90vh;overflow-y:auto;"
       onclick="event.stopPropagation()">
       <button id="modalCloseX"
         style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;line-height:1;cursor:pointer;color:var(--muted);padding:0;">&times;</button>
-      <h3 style="margin:0 0 16px;font-size:19px">Subir documento</h3>
 
       <div id="modalAlert"
         style="display:none; font-size:13px; font-weight:600; padding:10px 14px; border-radius:9px; margin-bottom:16px;">
       </div>
 
-      <div
-        style="margin-bottom:18px;font-size:14px;background:var(--bg);padding:12px;border-radius:9px;border:1px solid var(--line);">
-        <div><span style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Carga:</span> <span
-            id="modalCargaText">Ejemplo de Proveedor - PI-1234</span></div>
-        <div style="margin-top:6px"><span
-            style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Etapa:</span> <span
-            id="modalEtapaText">Invoice</span></div>
+      <div id="modalStep1">
+        <h3 style="margin:0 0 16px;font-size:19px">Subir documento</h3>
+
+        <div
+          style="margin-bottom:18px;font-size:14px;background:var(--bg);padding:12px;border-radius:9px;border:1px solid var(--line);">
+          <div><span style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Carga:</span> <span
+              id="modalCargaText">Ejemplo de Proveedor - PI-1234</span></div>
+          <div style="margin-top:6px"><span
+              style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Etapa:</span> <span
+              id="modalEtapaText">Invoice</span></div>
+        </div>
+
+        <div class="fld" style="margin-bottom:16px">
+          <label for="modalDocNum">Número de documento</label>
+          <input type="text" id="modalDocNum" placeholder="Ej. INV-2023-001" />
+        </div>
+
+        <div class="fld" style="margin-bottom:24px">
+          <label for="modalDocFile">Archivo</label>
+          <input type="file" id="modalDocFile" accept=".pdf,.jpg,.jpeg,.png" style="padding:6px;background:#fff" />
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button id="modalCancel" class="btn btn-ghost">Cancelar</button>
+          <button id="modalSubmit" class="btn btn-primary">Subir</button>
+        </div>
+      </div>
+
+      <div id="modalStep2" style="display:none;">
+        <h3 style="margin:0 0 16px;font-size:19px">Datos del PI</h3>
+        <div class="fld" style="margin-bottom:16px">
+          <label for="piSubtotal">Subtotal del PI</label>
+          <input type="number" step="0.01" id="piSubtotal" placeholder="0.00" />
+        </div>
+        <div class="fld" style="margin-bottom:16px">
+          <label>Anticipo</label>
+          <div style="display:flex;gap:8px">
+            <input type="number" step="0.01" id="piAnticipoVal" placeholder="0" style="flex:1" />
+            <select id="piAnticipoTipo" style="width:70px;margin:0;">
+              <option value="%">%</option>
+              <option value="$">$</option>
+            </select>
+          </div>
+          <div id="piResumen" style="font-size:12px;color:var(--muted);margin-top:6px;min-height:15px"></div>
+        </div>
+        <div class="fld" style="margin-bottom:16px">
+          <label for="piProvSel">Proveedor</label>
+          <select id="piProvSel" style="margin-bottom:8px"></select>
+          <input type="text" id="piProvOtro" placeholder="Nombre del proveedor" style="display:none" />
+        </div>
+        <div class="fld" style="margin-bottom:16px">
+          <label for="piTerminos">Términos de crédito</label>
+          <input type="text" id="piTerminos" />
+        </div>
+        <div class="fld" style="margin-bottom:16px">
+          <label for="piComprobante">Comprobante de pago</label>
+          <input type="file" id="piComprobante" accept=".pdf,.jpg,.jpeg,.png"
+            style="padding:6px;background:#fff;margin-bottom:8px" />
+          <label for="piFechaPago">Fecha de pago</label>
+          <input type="date" id="piFechaPago" />
+        </div>
+        <div class="fld" style="margin-bottom:24px">
+          <label for="piObs">Observaciones</label>
+          <textarea id="piObs" rows="3"
+            style="width:100%;resize:vertical;border:1px solid var(--line);border-radius:6px;padding:8px;font-family:inherit;font-size:14px;"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button id="piCancel" class="btn btn-ghost">Ahora no</button>
+          <button id="piSubmit" class="btn btn-primary">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE NUEVA CARGA -->
+  <div id="newCargaModal"
+    style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.6);z-index:999;align-items:center;justify-content:center;backdrop-filter:blur(2px)">
+    <div
+      style="background:var(--card);border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:0 10px 25px rgba(0,0,0,0.1);position:relative;border:1px solid var(--line);max-height:90vh;overflow-y:auto;"
+      onclick="event.stopPropagation()">
+      <button id="ncCloseX"
+        style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;line-height:1;cursor:pointer;color:var(--muted);padding:0;">&times;</button>
+
+      <div id="ncAlert"
+        style="display:none; font-size:13px; font-weight:600; padding:10px 14px; border-radius:9px; margin-bottom:16px;">
+      </div>
+
+      <h3 style="margin:0 0 16px;font-size:19px">Nueva carga</h3>
+
+      <div class="fld" style="margin-bottom:16px">
+        <label for="ncProvSel">Proveedor <span style="color:var(--red)">*</span></label>
+        <select id="ncProvSel" style="margin-bottom:8px"></select>
+        <input type="text" id="ncProvOtro" placeholder="Nombre del proveedor" style="display:none" />
       </div>
 
       <div class="fld" style="margin-bottom:16px">
-        <label for="modalDocNum">Número de documento</label>
-        <input type="text" id="modalDocNum" placeholder="Ej. INV-2023-001" />
+        <label for="ncFecha">Fecha PI/INV</label>
+        <input type="date" id="ncFecha" />
       </div>
 
       <div class="fld" style="margin-bottom:24px">
-        <label for="modalDocFile">Archivo</label>
-        <input type="file" id="modalDocFile" accept=".pdf,.jpg,.jpeg,.png" style="padding:6px;background:#fff" />
+        <label for="ncEstado">Estado inicial</label>
+        <select id="ncEstado">
+          <option value="En cotización" selected>En cotización</option>
+          <option value="En produccion">En produccion</option>
+          <option value="En espera de despacho">En espera de despacho</option>
+          <option value="En camino">En camino</option>
+          <option value="Proc. Nacionalizacion">Proc. Nacionalizacion</option>
+          <option value="Recibido">Recibido</option>
+          <option value="Indefinido">Indefinido</option>
+        </select>
       </div>
 
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button id="modalCancel" class="btn btn-ghost">Cancelar</button>
-        <button id="modalSubmit" class="btn btn-primary">Subir</button>
+        <button id="ncCancel" class="btn btn-ghost">Cancelar</button>
+        <button id="ncSubmit" class="btn btn-primary">Crear</button>
       </div>
     </div>
   </div>
@@ -1078,9 +1182,11 @@
        agregar "rfq" a las cuatro listas de abajo. */
     const REQUIRED = {
       produccion: ["pi"],
+      espera: ["pi", "inv", "pl"],
       camino: ["pi", "inv", "pl", "bl"],
       nacion: ["pi", "inv", "pl", "bl"],
       recibido: ["pi", "inv", "pl", "bl"],
+      cotizacion: [],
       indef: [],
       na: [],
     };
@@ -1151,6 +1257,8 @@
       if (t.includes("camino")) return "camino";
       if (t.includes("nacionaliz")) return "nacion";
       if (t.includes("produc")) return "produccion";
+      if (t.includes("espera")) return "espera";
+      if (t.includes("cotiz")) return "cotizacion";
       if (t.includes("indefin")) return "indef";
       return "na";
     }
@@ -1264,6 +1372,15 @@
         cont: find(["Container ID", "Contenedor", "Container"]),
         agente: find(["Agente aduanal", "Agente Aduanal", "Agente"]),
         id: find(["ID"]),
+        subtotal: find(["Subtotal"]),
+        total: find(["Total"]),
+        anticipoPct: find(["Anticipo (%)", "Anticipo", "Anticipo %"]),
+        totalAnticipo: find(["Total Anticipo"]),
+        porPagar: find(["Por Pagar"]),
+        termCredito: find(["Terminos de credito", "Términos de crédito", "Terminos de crédito"]),
+        obs: find(["Observaciones"]),
+        fechaPago: find(["Fecha de pago", "Fecha de pago PI", "Fecha pago"]),
+        pagoPiUrl: find(["Pago PI URL", "URL de pago PI", "Pago PI"]),
       };
       // Índices por etapa
       const sIdx = {};
@@ -1335,6 +1452,15 @@
           agente: get(r, col.agente),
           id: get(r, col.id),   // identificador estable de la Fase 0
           stages,
+          subtotal: get(r, col.subtotal),
+          total: get(r, col.total),
+          anticipoPct: get(r, col.anticipoPct),
+          totalAnticipo: get(r, col.totalAnticipo),
+          porPagar: get(r, col.porPagar),
+          termCredito: get(r, col.termCredito),
+          obs: get(r, col.obs),
+          fechaPago: pdate(get(r, col.fechaPago)),
+          pagoPiUrl: getLink(col.pagoPiUrl) || (isUrl(get(r, col.pagoPiUrl)) ? get(r, col.pagoPiUrl) : ""),
         };
         // solo documentos: ETD/ETA nunca cuentan como faltante
         calcRowStatus(row);
@@ -1407,7 +1533,7 @@
     }
 
     function stateTag(r) {
-      const cls = { recibido: "recibido", camino: "camino", nacion: "nacion", produccion: "produccion", indef: "indef", na: "na" }[r.estado];
+      const cls = { recibido: "recibido", camino: "camino", nacion: "nacion", produccion: "produccion", indef: "indef", na: "na", espera: "espera", cotizacion: "cotizacion" }[r.estado];
       return `<span class="st ${cls}">${esc(r.estadoRaw || "Sin estado")}</span>`;
     }
 
@@ -1449,11 +1575,61 @@
       }).join("") + `</div>`;
     }
 
+    async function cambiarEstado(sel, id) {
+      const nuevo = sel.value;
+      const actual = sel.dataset.actual;
+      if (nuevo === actual) return;
+      if (!confirm(`¿Cambiar el estado de ${actual} a ${nuevo}?`)) {
+        sel.value = actual;
+        return;
+      }
+      sel.disabled = true;
+      try {
+        const res = await fetch(UPLOAD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ token: UPLOAD_TOKEN, accion: "cambiarEstado", id: id, estado: nuevo })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          const r = ROWS.find(x => x.id === id);
+          if (r) {
+            r.estadoRaw = nuevo;
+            r.estado = estadoKey(nuevo);
+            calcRowStatus(r);
+            renderAll();
+          }
+          refrescarDesdeBackend();
+        } else {
+          alert("Error: " + (data.error || "Desconocido"));
+          sel.value = actual;
+        }
+      } catch (e) {
+        alert("Error de red: " + e.message);
+        sel.value = actual;
+      } finally {
+        sel.disabled = false;
+      }
+    }
+
     function detailHTML(r) {
       const kv = (k, v) => `<div><div class="dg-k">${k}</div><div class="dg-v">${v || "—"}</div></div>`;
+
+      let estCtrl = stateTag(r);
+      if (r.id) {
+        const opts = ["En cotización", "En produccion", "En espera de despacho", "En camino", "Proc. Nacionalización", "Recibido", "Indefinido"];
+        const optHTML = opts.map(o => `<option value="${o}" ${r.estadoRaw === o ? "selected" : ""}>${o}</option>`).join("");
+        estCtrl += ` <select class="fld" style="padding:2px 6px; font-size:12px; height:24px; width:auto; display:inline-block; margin-left:8px;" onchange="cambiarEstado(this, '${esc(r.id)}')" data-actual="${esc(r.estadoRaw)}">${optHTML}</select>`;
+      }
+
+      const antMonto = esc(r.totalAnticipo);
+      const antPct = esc(r.anticipoPct);
+      const antStr = (antMonto && antPct) ? `${antMonto} (${antPct})` : (antMonto || antPct || "—");
+
       return `<div class="dwrap">
     ${timelineHTML(r)}
     <div class="dgrid">
+      ${kv("Estado", estCtrl)}
       ${kv("Proveedor", esc(r.prov))}
       ${kv("Fecha PI/INV", fmtDate(r.fecha))}
       ${kv("ETD (zarpe)", fmtDate(r.stages.etd.date))}
@@ -1462,6 +1638,16 @@
         ? `<a href="${esc(r.contUrl)}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">${esc(r.cont)} ↗</a>`
         : esc(r.cont))}
       ${kv("Agente aduanal", esc(r.agente))}
+      ${kv("Total", esc(r.total))}
+      ${kv("Anticipo", antStr !== "—" ? antStr : "")}
+      ${kv("Por Pagar", esc(r.porPagar))}
+      ${kv("Términos de crédito", esc(r.termCredito))}
+      ${kv("Fecha de pago", fmtDate(r.fechaPago))}
+      ${kv("Comprobante", r.pagoPiUrl ? `<a href="${esc(r.pagoPiUrl)}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">Ver comprobante ↗</a>` : "")}
+      <div style="grid-column: 1 / -1; margin-top: 4px;">
+        <div class="dg-k">Observaciones</div>
+        <div class="dg-v" style="margin-top:4px; white-space:pre-wrap;">${esc(r.obs) || "—"}</div>
+      </div>
     </div>
   </div>`;
     }
@@ -1648,6 +1834,28 @@
         return res.text();
       };
 
+      // 0) API backend
+      try {
+        const res = await fetch(UPLOAD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ token: UPLOAD_TOKEN, accion: "leer" })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.ok && data.filas) {
+            const rows = normalize(data.matriz, data.links);
+            if (rows.length) {
+              ROWS = rows;
+              const conLink = ROWS.reduce((a, r) => a + STAGES.filter(s => r.stages[s.key].url).length, 0);
+              statusUI("ok", `En vivo (API) · ${ROWS.length} cargas · ${conLink} documentos con link · ${hora()}`);
+              renderAll();
+              return;
+            }
+          }
+        }
+      } catch (e) { console.warn("Lectura API falló:", e.message); }
+
       // 1) HTML publicado (trae los hipervínculos). Primero por el proxy, luego directo.
       for (const src of [PROXY_HTML, htmlUrl()]) {
         try {
@@ -1690,6 +1898,29 @@
           : `<b>No se pudo leer la hoja publicada.</b> ${esc(e.message)}. Revisa que siga publicada en
          <b>Archivo → Compartir → Publicar en la Web</b>, o usa <b>Subir Excel</b>.`);
         loadDemo();
+      }
+    }
+
+    async function refrescarDesdeBackend() {
+      try {
+        const res = await fetch(UPLOAD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ token: UPLOAD_TOKEN, accion: "leer" })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.ok && data.filas) {
+            const rows = normalize(data.matriz, data.links);
+            if (rows.length) {
+              const oldOpen = OPEN_ROW;
+              ROWS = rows;
+              OPEN_ROW = oldOpen;
+              renderAll();
+            }
+          }
+        }
+      } catch (e) {
       }
     }
 
@@ -1782,6 +2013,126 @@
 
     loadLive();
 
+    /* ====== MODAL NUEVA CARGA ====== */
+    function setNcAlert(msg, isError) {
+      const el = document.getElementById("ncAlert");
+      if (!msg) { el.style.display = "none"; return; }
+      el.innerHTML = msg;
+      el.style.display = "block";
+      el.style.backgroundColor = isError ? "#fef2f2" : "#dcfce7";
+      el.style.color = isError ? "var(--red)" : "var(--green-d)";
+      el.style.border = `1px solid ${isError ? "#fecaca" : "#bbf7d0"}`;
+    }
+
+    document.getElementById("btnNewCarga").onclick = () => {
+      const modal = document.getElementById("newCargaModal");
+      const selProv = document.getElementById("ncProvSel");
+
+      const provs = [...new Set(ROWS.map(r => r.prov))].filter(Boolean).sort((a, b) => String(a).localeCompare(String(b)));
+      selProv.innerHTML = provs.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join("") + `<option value="Otro">Otro</option>`;
+
+      selProv.value = provs[0] || "Otro";
+      document.getElementById("ncProvOtro").style.display = selProv.value === "Otro" ? "block" : "none";
+      document.getElementById("ncProvOtro").value = "";
+
+      document.getElementById("ncFecha").value = new Date().toISOString().split('T')[0];
+      document.getElementById("ncEstado").value = "En cotización";
+
+      setNcAlert("", false);
+      modal.style.display = "flex";
+    };
+
+    document.getElementById("ncProvSel").onchange = e => {
+      document.getElementById("ncProvOtro").style.display = e.target.value === "Otro" ? "block" : "none";
+    };
+
+    function closeNcModal() {
+      document.getElementById("newCargaModal").style.display = "none";
+    }
+    document.getElementById("ncCloseX").onclick = closeNcModal;
+    document.getElementById("ncCancel").onclick = closeNcModal;
+    document.getElementById("newCargaModal").onclick = closeNcModal;
+
+    document.getElementById("ncSubmit").onclick = async () => {
+      const provSel = document.getElementById("ncProvSel").value;
+      const prov = provSel === "Otro" ? document.getElementById("ncProvOtro").value.trim() : provSel;
+      const rawFecha = document.getElementById("ncFecha").value;
+      const estadoRaw = document.getElementById("ncEstado").value;
+
+      if (!prov) {
+        setNcAlert("Proveedor es obligatorio.", true);
+        return;
+      }
+
+      setNcAlert("", false);
+      const btn = document.getElementById("ncSubmit");
+      const oldText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Creando...";
+
+      const payload = {
+        token: UPLOAD_TOKEN,
+        accion: "crearCarga",
+        proveedor: prov,
+        fecha: rawFecha,
+        estado: estadoRaw
+      };
+
+      try {
+        const resp = await fetch(UPLOAD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+        if (!resp.ok) throw new Error("Error HTTP " + resp.status);
+        const data = await resp.json();
+
+        if (!data.ok) throw new Error(data.error || "Error al crear la carga");
+
+        const fechaParsed = pdate(rawFecha.split('-').reverse().join('/'));
+
+        const stages = {};
+        STAGES.forEach(st => {
+          stages[st.key] = { has: false, label: "", url: "", date: null };
+        });
+
+        const row = {
+          i: ROWS.length + 1,
+          fecha: fechaParsed,
+          estado: estadoKey(estadoRaw),
+          estadoRaw: estadoRaw,
+          prov: prov,
+          cont: "",
+          contUrl: "",
+          agente: "",
+          id: data.id,
+          stages: stages,
+          subtotal: "",
+          total: "",
+          anticipoPct: "",
+          totalAnticipo: "",
+          porPagar: "",
+          termCredito: "",
+          obs: "",
+          fechaPago: null,
+          pagoPiUrl: ""
+        };
+        calcRowStatus(row);
+        ROWS.push(row);
+
+        OPEN_ROW = data.id;
+        renderAll();
+        closeNcModal();
+        refrescarDesdeBackend();
+      } catch (err) {
+        console.error(err);
+        setNcAlert(err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = oldText;
+      }
+    };
+
     /* ====== MODAL DE SUBIDA ====== */
     function setModalAlert(msg, isError) {
       const el = document.getElementById("modalAlert");
@@ -1795,6 +2146,8 @@
 
     function abrirModal(btn) {
       const modal = document.getElementById("uploadModal");
+      document.getElementById("modalStep1").style.display = "block";
+      document.getElementById("modalStep2").style.display = "none";
       if (btn) {
         const d = btn.dataset;
         modal.dataset.stkey = d.stkey || "";
@@ -1888,13 +2241,45 @@
               calcRowStatus(row);
               renderAll();
             }
+            refrescarDesdeBackend();
 
-            setModalAlert(`Documento subido. <a href="${data.url}" target="_blank" rel="noopener" style="color:#15803d;text-decoration:underline">Ver en Drive</a>`, false);
-            setTimeout(() => {
+            if (etapa === "pi") {
+              document.getElementById("modalStep1").style.display = "none";
+              document.getElementById("modalStep2").style.display = "block";
+
+              const rowData = ROWS.find(r => r.id === id);
+              document.getElementById("piSubtotal").value = rowData?.subtotal || "";
+
+              const selProv = document.getElementById("piProvSel");
+              const provs = [...new Set(ROWS.map(r => r.prov))].filter(Boolean).sort((a, b) => String(a).localeCompare(String(b)));
+              selProv.innerHTML = provs.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join("") + `<option value="Otro">Otro</option>`;
+
+              if (rowData?.prov && provs.includes(rowData.prov)) {
+                selProv.value = rowData.prov;
+              } else {
+                selProv.value = provs[0] || "Otro";
+              }
+              document.getElementById("piProvOtro").style.display = selProv.value === "Otro" ? "block" : "none";
+              document.getElementById("piProvOtro").value = "";
+
+              document.getElementById("piAnticipoVal").value = "";
+              document.getElementById("piAnticipoTipo").value = "%";
+              document.getElementById("piResumen").textContent = "";
+              document.getElementById("piTerminos").value = "";
+              document.getElementById("piComprobante").value = "";
+              document.getElementById("piFechaPago").value = new Date().toISOString().split('T')[0];
+              document.getElementById("piObs").value = "";
+
               btnSubmit.disabled = false;
               btnSubmit.textContent = originalText;
-              cerrarModal();
-            }, 2000);
+            } else {
+              setModalAlert(`Documento subido. <a href="${data.url}" target="_blank" rel="noopener" style="color:#15803d;text-decoration:underline">Ver en Drive</a>`, false);
+              setTimeout(() => {
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = originalText;
+                cerrarModal();
+              }, 2000);
+            }
           } else {
             setModalAlert(data?.error || "Error desconocido al subir", true);
             btnSubmit.disabled = false;
@@ -1913,6 +2298,211 @@
       };
       reader.onerror = () => setModalAlert("Error al leer el archivo localmente.", true);
       reader.readAsDataURL(file);
+    };
+
+    document.getElementById("piProvSel").onchange = e => {
+      document.getElementById("piProvOtro").style.display = e.target.value === "Otro" ? "block" : "none";
+    };
+
+    function recalcPI() {
+      const sub = parseFloat(document.getElementById("piSubtotal").value);
+      const antVal = parseFloat(document.getElementById("piAnticipoVal").value);
+      const tipo = document.getElementById("piAnticipoTipo").value;
+      const res = document.getElementById("piResumen");
+
+      if (isNaN(sub) || sub <= 0) {
+        if (tipo === "$" && !isNaN(antVal) && antVal > 0) {
+          res.textContent = "Escribe primero el subtotal para poder calcular el porcentaje";
+        } else {
+          res.textContent = "";
+        }
+        return;
+      }
+
+      if (isNaN(antVal) || antVal <= 0) {
+        res.textContent = `Total del PI: $${sub.toFixed(2)}`;
+        return;
+      }
+
+      let pct = 0, amt = 0;
+      if (tipo === "%") {
+        pct = antVal;
+        amt = sub * (pct / 100);
+      } else {
+        amt = antVal;
+        pct = (amt / sub) * 100;
+      }
+      const pagar = sub - amt;
+      res.textContent = `Total del PI: $${sub.toFixed(2)} · Anticipo: $${amt.toFixed(2)} (${pct.toFixed(2)}%) · Por pagar: $${pagar.toFixed(2)}`;
+    }
+
+    document.getElementById("piSubtotal").oninput = recalcPI;
+    document.getElementById("piAnticipoVal").oninput = recalcPI;
+    document.getElementById("piAnticipoTipo").onchange = recalcPI;
+
+    document.getElementById("piCancel").onclick = cerrarModal;
+
+    document.getElementById("piSubmit").onclick = async () => {
+      const sub = parseFloat(document.getElementById("piSubtotal").value);
+      const antVal = parseFloat(document.getElementById("piAnticipoVal").value);
+      const tipo = document.getElementById("piAnticipoTipo").value;
+
+      if (tipo === "$" && !isNaN(antVal) && antVal > 0 && (isNaN(sub) || sub <= 0)) {
+        alert("Escribe primero el subtotal para poder calcular el porcentaje");
+        return;
+      }
+
+      const provSel = document.getElementById("piProvSel").value;
+      const provOtro = document.getElementById("piProvOtro").value.trim();
+      const provFinal = provSel === "Otro" ? provOtro : provSel;
+
+      const modal = document.getElementById("uploadModal");
+      const id = modal.dataset.rid;
+      const terminos = document.getElementById("piTerminos").value.trim();
+
+      let anticipoPct;
+      if (!isNaN(antVal) && antVal > 0) {
+        if (tipo === "%") {
+          anticipoPct = antVal / 100;
+        } else if (tipo === "$" && !isNaN(sub) && sub > 0) {
+          anticipoPct = antVal / sub;
+        }
+        if (anticipoPct !== undefined) {
+          anticipoPct = parseFloat(anticipoPct.toFixed(4));
+        }
+      }
+
+      const rawFecha = document.getElementById("piFechaPago").value;
+      let fechaPago;
+      if (rawFecha) {
+        const parts = rawFecha.split("-");
+        if (parts.length === 3) fechaPago = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+
+      const obs = document.getElementById("piObs").value.trim();
+
+      const payload = { token: UPLOAD_TOKEN, accion: "guardarDatosPI", id };
+      if (!isNaN(sub) && sub > 0) payload.subtotal = sub;
+      if (anticipoPct !== undefined) payload.anticipoPct = anticipoPct;
+      if (provFinal) payload.proveedor = provFinal;
+      if (terminos) payload.terminos = terminos;
+      if (fechaPago) payload.fechaPago = fechaPago;
+      if (obs) payload.observaciones = obs;
+
+      const fileInput = document.getElementById("piComprobante");
+      const file = fileInput.files[0];
+
+      const btnSubmit = document.getElementById("piSubmit");
+      const originalText = btnSubmit.textContent;
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = "Guardando…";
+      setModalAlert("", false);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+      try {
+        const res = await fetch(UPLOAD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        let data;
+        try { data = await res.json(); } catch (e) { throw new Error("no-json"); }
+
+        if (data && data.ok) {
+          if (provFinal) {
+            const row = ROWS.find(r => r.id === id);
+            if (row && row.prov !== provFinal) {
+              row.prov = provFinal;
+              renderAll();
+            }
+          }
+
+          if (!file) {
+            setModalAlert("Datos guardados correctamente.", false);
+            refrescarDesdeBackend();
+            setTimeout(() => {
+              btnSubmit.disabled = false;
+              btnSubmit.textContent = originalText;
+              cerrarModal();
+            }, 2000);
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = async e => {
+            const dataUrl = e.target.result;
+            const base64 = dataUrl.split(",")[1];
+            const payloadDoc = {
+              token: UPLOAD_TOKEN,
+              accion: "subirDoc",
+              id,
+              etapa: "pagoPI",
+              filename: file.name,
+              mimeType: file.type,
+              base64
+            };
+
+            const controller2 = new AbortController();
+            const timeoutId2 = setTimeout(() => controller2.abort(), 60000);
+
+            try {
+              const res2 = await fetch(UPLOAD_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(payloadDoc),
+                signal: controller2.signal
+              });
+              clearTimeout(timeoutId2);
+
+              let data2;
+              try { data2 = await res2.json(); } catch (err) { throw new Error("no-json"); }
+
+              if (data2 && data2.ok) {
+                setModalAlert("Datos y comprobante guardados correctamente.", false);
+                refrescarDesdeBackend();
+                setTimeout(() => {
+                  btnSubmit.disabled = false;
+                  btnSubmit.textContent = originalText;
+                  cerrarModal();
+                }, 2000);
+              } else {
+                setModalAlert("Los datos se guardaron, pero el comprobante no se pudo subir.", true);
+                refrescarDesdeBackend();
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = originalText;
+              }
+            } catch (err2) {
+              clearTimeout(timeoutId2);
+              setModalAlert("Los datos se guardaron, pero el comprobante no se pudo subir.", true);
+              refrescarDesdeBackend();
+              btnSubmit.disabled = false;
+              btnSubmit.textContent = originalText;
+            }
+          };
+          reader.onerror = () => {
+            setModalAlert("Los datos se guardaron, pero el comprobante no se pudo leer localmente.", true);
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = originalText;
+          };
+          reader.readAsDataURL(file);
+
+        } else {
+          setModalAlert(data?.error || "Error al guardar los datos del PI", true);
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = originalText;
+        }
+
+      } catch (err) {
+        clearTimeout(timeoutId);
+        setModalAlert("Error de red al intentar guardar los datos del PI.", true);
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = originalText;
+      }
     };
 
     window.__testModal = () => abrirModal();

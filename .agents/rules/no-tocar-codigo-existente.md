@@ -85,3 +85,29 @@ Dime, en una lista corta:
 
 Si modificaste algo de las listas de arriba, dilo en la PRIMERA línea de tu
 respuesta.
+
+## Excepciones autorizadas (Fase 2)
+
+Estas y solo estas modificaciones a código protegido están permitidas:
+
+- `estadoKey`: añadir el reconocimiento de los estados "En espera de despacho"
+  (clave `espera`) y "En cotización" (clave `cotizacion`, buscando "cotiz" para
+  que funcione con o sin tilde). No cambies el reconocimiento de ningún otro
+  estado.
+- `REQUIRED`: añadir las entradas `espera: ["pi","inv","pl"]` y
+  `cotizacion: []` (lista vacía a propósito: en esa fase no se exige ningún
+  documento). No modifiques ninguna de las entradas que ya existen.
+- `stateTag`: añadir al mapa de clases las claves `espera` y `cotizacion`,
+  conservando todas las existentes.
+- `normalize`: puede llamar a la función auxiliar de recálculo, y puede añadir
+  la lectura de columnas nuevas y campos nuevos al objeto de cada fila. NO
+  puede cambiar la lógica de `stages`, `missing` ni `sem`, ni alterar los
+  campos que ya lee.
+- `timelineHTML` y `detailHTML`: pueden añadir controles y campos nuevos. No
+  cambies cómo se pintan las etapas ni sus clases CSS.
+- `loadLive`: puede añadir un intento NUEVO de lectura al principio de la
+  cadena, sin eliminar ni modificar ninguno de los intentos existentes, que
+  siguen siendo el respaldo.
+
+Cualquier otra modificación a la lista de funciones y constantes protegidas
+sigue prohibida. Si una tarea parece exigirla, detente y pregunta.
