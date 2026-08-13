@@ -839,6 +839,7 @@
     <!-- HEADER -->
     <div class="head-outer">
       <div class="actions">
+        <button class="btn btn-ghost" id="btnNewCarga">+ Nueva carga</button>
         <button class="btn btn-ghost" id="btnUpload">Subir Excel</button>
         <button class="btn btn-primary" id="btnReload">Actualizar</button>
         <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" />
@@ -1066,6 +1067,66 @@
           <button id="piCancel" class="btn btn-ghost">Ahora no</button>
           <button id="piSubmit" class="btn btn-primary">Guardar</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE NUEVA CARGA -->
+  <div id="newCargaModal"
+    style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.6);z-index:999;align-items:center;justify-content:center;backdrop-filter:blur(2px)">
+    <div
+      style="background:var(--card);border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:0 10px 25px rgba(0,0,0,0.1);position:relative;border:1px solid var(--line);max-height:90vh;overflow-y:auto;"
+      onclick="event.stopPropagation()">
+      <button id="ncCloseX"
+        style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;line-height:1;cursor:pointer;color:var(--muted);padding:0;">&times;</button>
+      
+      <div id="ncAlert"
+        style="display:none; font-size:13px; font-weight:600; padding:10px 14px; border-radius:9px; margin-bottom:16px;">
+      </div>
+
+      <h3 style="margin:0 0 16px;font-size:19px">Nueva carga</h3>
+
+      <div class="fld" style="margin-bottom:16px">
+        <label for="ncProvSel">Proveedor <span style="color:var(--red)">*</span></label>
+        <select id="ncProvSel" style="margin-bottom:8px"></select>
+        <input type="text" id="ncProvOtro" placeholder="Nombre del proveedor" style="display:none" />
+      </div>
+
+      <div class="fld" style="margin-bottom:16px">
+        <label for="ncPiNum">PI No <span style="color:var(--red)">*</span></label>
+        <input type="text" id="ncPiNum" />
+      </div>
+
+      <div class="fld" style="margin-bottom:16px">
+        <label for="ncFecha">Fecha PI/INV</label>
+        <input type="date" id="ncFecha" />
+      </div>
+
+      <div class="fld" style="margin-bottom:16px">
+        <label for="ncEstado">Estado inicial</label>
+        <select id="ncEstado">
+          <option value="En produccion" selected>En produccion</option>
+          <option value="En espera de despacho">En espera de despacho</option>
+          <option value="En camino">En camino</option>
+          <option value="Proc. Nacionalizacion">Proc. Nacionalizacion</option>
+          <option value="Recibido">Recibido</option>
+          <option value="Indefinido">Indefinido</option>
+        </select>
+      </div>
+
+      <div class="fld" style="margin-bottom:16px">
+        <label for="ncAgente">Agente aduanal</label>
+        <input type="text" id="ncAgente" />
+      </div>
+
+      <div class="fld" style="margin-bottom:24px">
+        <label for="ncContenedor">Contenedor</label>
+        <input type="text" id="ncContenedor" />
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button id="ncCancel" class="btn btn-ghost">Cancelar</button>
+        <button id="ncSubmit" class="btn btn-primary">Crear</button>
       </div>
     </div>
   </div>
@@ -1910,6 +1971,74 @@
     };
 
     loadLive();
+
+    /* ====== MODAL NUEVA CARGA ====== */
+    function setNcAlert(msg, isError) {
+      const el = document.getElementById("ncAlert");
+      if (!msg) { el.style.display = "none"; return; }
+      el.innerHTML = msg;
+      el.style.display = "block";
+      el.style.backgroundColor = isError ? "#fef2f2" : "#dcfce7";
+      el.style.color = isError ? "var(--red)" : "var(--green-d)";
+      el.style.border = `1px solid ${isError ? "#fecaca" : "#bbf7d0"}`;
+    }
+
+    document.getElementById("btnNewCarga").onclick = () => {
+      const modal = document.getElementById("newCargaModal");
+      const selProv = document.getElementById("ncProvSel");
+      
+      const provs = [...new Set(ROWS.map(r => r.prov))].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b)));
+      selProv.innerHTML = provs.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join("") + `<option value="Otro">Otro</option>`;
+      
+      selProv.value = provs[0] || "Otro";
+      document.getElementById("ncProvOtro").style.display = selProv.value === "Otro" ? "block" : "none";
+      document.getElementById("ncProvOtro").value = "";
+      
+      document.getElementById("ncPiNum").value = "";
+      document.getElementById("ncFecha").value = new Date().toISOString().split('T')[0];
+      document.getElementById("ncEstado").value = "En produccion";
+      document.getElementById("ncAgente").value = "";
+      document.getElementById("ncContenedor").value = "";
+      
+      setNcAlert("", false);
+      modal.style.display = "flex";
+    };
+
+    document.getElementById("ncProvSel").onchange = e => {
+      document.getElementById("ncProvOtro").style.display = e.target.value === "Otro" ? "block" : "none";
+    };
+
+    function closeNcModal() {
+      document.getElementById("newCargaModal").style.display = "none";
+    }
+    document.getElementById("ncCloseX").onclick = closeNcModal;
+    document.getElementById("ncCancel").onclick = closeNcModal;
+    document.getElementById("newCargaModal").onclick = closeNcModal;
+
+    document.getElementById("ncSubmit").onclick = () => {
+      const provSel = document.getElementById("ncProvSel").value;
+      const prov = provSel === "Otro" ? document.getElementById("ncProvOtro").value.trim() : provSel;
+      const piNum = document.getElementById("ncPiNum").value.trim();
+      
+      if (!prov || !piNum) {
+        setNcAlert("Proveedor y PI No son obligatorios.", true);
+        return;
+      }
+      
+      setNcAlert("", false);
+      
+      const carga = {
+        proveedor: prov,
+        piNum: piNum,
+        fecha: document.getElementById("ncFecha").value,
+        estado: document.getElementById("ncEstado").value,
+        agente: document.getElementById("ncAgente").value.trim(),
+        contenedor: document.getElementById("ncContenedor").value.trim()
+      };
+      
+      console.log("Nueva carga:", carga);
+      closeNcModal();
+    };
 
     /* ====== MODAL DE SUBIDA ====== */
     function setModalAlert(msg, isError) {
