@@ -534,6 +534,11 @@
       color: #475569
     }
 
+    .st.cotizacion {
+      background: #f3f4f6;
+      color: #374151
+    }
+
     /* Track (7 pasos compactos) */
     .track {
       display: flex;
@@ -1093,35 +1098,21 @@
       </div>
 
       <div class="fld" style="margin-bottom:16px">
-        <label for="ncPiNum">PI No (opcional)</label>
-        <input type="text" id="ncPiNum" />
-      </div>
-
-      <div class="fld" style="margin-bottom:16px">
         <label for="ncFecha">Fecha PI/INV</label>
         <input type="date" id="ncFecha" />
       </div>
 
-      <div class="fld" style="margin-bottom:16px">
+      <div class="fld" style="margin-bottom:24px">
         <label for="ncEstado">Estado inicial</label>
         <select id="ncEstado">
-          <option value="En produccion" selected>En produccion</option>
+          <option value="En cotización" selected>En cotización</option>
+          <option value="En produccion">En produccion</option>
           <option value="En espera de despacho">En espera de despacho</option>
           <option value="En camino">En camino</option>
           <option value="Proc. Nacionalizacion">Proc. Nacionalizacion</option>
           <option value="Recibido">Recibido</option>
           <option value="Indefinido">Indefinido</option>
         </select>
-      </div>
-
-      <div class="fld" style="margin-bottom:16px">
-        <label for="ncAgente">Agente aduanal</label>
-        <input type="text" id="ncAgente" />
-      </div>
-
-      <div class="fld" style="margin-bottom:24px">
-        <label for="ncContenedor">Contenedor</label>
-        <input type="text" id="ncContenedor" />
       </div>
 
       <div style="display:flex;gap:10px;justify-content:flex-end">
@@ -1193,6 +1184,7 @@
       camino: ["pi", "inv", "pl", "bl"],
       nacion: ["pi", "inv", "pl", "bl"],
       recibido: ["pi", "inv", "pl", "bl"],
+      cotizacion: [],
       indef: [],
       na: [],
     };
@@ -1264,6 +1256,7 @@
       if (t.includes("nacionaliz")) return "nacion";
       if (t.includes("produc")) return "produccion";
       if (t.includes("espera")) return "espera";
+      if (t.includes("cotiz")) return "cotizacion";
       if (t.includes("indefin")) return "indef";
       return "na";
     }
@@ -1538,7 +1531,7 @@
     }
 
     function stateTag(r) {
-      const cls = { recibido: "recibido", camino: "camino", nacion: "nacion", produccion: "produccion", indef: "indef", na: "na", espera: "espera" }[r.estado];
+      const cls = { recibido: "recibido", camino: "camino", nacion: "nacion", produccion: "produccion", indef: "indef", na: "na", espera: "espera", cotizacion: "cotizacion" }[r.estado];
       return `<span class="st ${cls}">${esc(r.estadoRaw || "Sin estado")}</span>`;
     }
 
@@ -1621,7 +1614,7 @@
 
       let estCtrl = stateTag(r);
       if (r.id) {
-        const opts = ["En produccion", "En espera de despacho", "En camino", "Proc. Nacionalización", "Recibido", "Indefinido"];
+        const opts = ["En cotización", "En produccion", "En espera de despacho", "En camino", "Proc. Nacionalización", "Recibido", "Indefinido"];
         const optHTML = opts.map(o => `<option value="${o}" ${r.estadoRaw === o ? "selected" : ""}>${o}</option>`).join("");
         estCtrl += ` <select class="fld" style="padding:2px 6px; font-size:12px; height:24px; width:auto; display:inline-block; margin-left:8px;" onchange="cambiarEstado(this, '${esc(r.id)}')" data-actual="${esc(r.estadoRaw)}">${optHTML}</select>`;
       }
@@ -1994,11 +1987,8 @@
       document.getElementById("ncProvOtro").style.display = selProv.value === "Otro" ? "block" : "none";
       document.getElementById("ncProvOtro").value = "";
       
-      document.getElementById("ncPiNum").value = "";
       document.getElementById("ncFecha").value = new Date().toISOString().split('T')[0];
-      document.getElementById("ncEstado").value = "En produccion";
-      document.getElementById("ncAgente").value = "";
-      document.getElementById("ncContenedor").value = "";
+      document.getElementById("ncEstado").value = "En cotización";
       
       setNcAlert("", false);
       modal.style.display = "flex";
@@ -2018,11 +2008,8 @@
     document.getElementById("ncSubmit").onclick = async () => {
       const provSel = document.getElementById("ncProvSel").value;
       const prov = provSel === "Otro" ? document.getElementById("ncProvOtro").value.trim() : provSel;
-      const piNum = document.getElementById("ncPiNum").value.trim();
       const rawFecha = document.getElementById("ncFecha").value;
       const estadoRaw = document.getElementById("ncEstado").value;
-      const agente = document.getElementById("ncAgente").value.trim();
-      const contenedor = document.getElementById("ncContenedor").value.trim();
       
       if (!prov) {
         setNcAlert("Proveedor es obligatorio.", true);
@@ -2042,9 +2029,6 @@
         fecha: rawFecha,
         estado: estadoRaw
       };
-      if (piNum) payload.piNo = piNum;
-      if (agente) payload.agente = agente;
-      if (contenedor) payload.contenedor = contenedor;
       
       try {
         const resp = await fetch(UPLOAD_URL, {
@@ -2061,11 +2045,7 @@
 
         const stages = {};
         STAGES.forEach(st => {
-          if (st.key === "pi" && piNum) {
-            stages[st.key] = { has: true, label: piNum, url: "", date: fechaParsed };
-          } else {
-            stages[st.key] = { has: false, label: "", url: "", date: null };
-          }
+          stages[st.key] = { has: false, label: "", url: "", date: null };
         });
         
         const row = {
@@ -2074,9 +2054,9 @@
           estado: estadoKey(estadoRaw),
           estadoRaw: estadoRaw,
           prov: prov,
-          cont: contenedor,
+          cont: "",
           contUrl: "",
-          agente: agente,
+          agente: "",
           id: data.id,
           stages: stages,
           subtotal: "",
