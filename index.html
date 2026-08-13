@@ -519,6 +519,11 @@
       color: #92400e
     }
 
+    .st.espera {
+      background: #ffedd5;
+      color: #9a3412
+    }
+
     .st.indef {
       background: #fee2e2;
       color: #991b1b
@@ -1078,6 +1083,7 @@
        agregar "rfq" a las cuatro listas de abajo. */
     const REQUIRED = {
       produccion: ["pi"],
+      espera: ["pi", "inv", "pl"],
       camino: ["pi", "inv", "pl", "bl"],
       nacion: ["pi", "inv", "pl", "bl"],
       recibido: ["pi", "inv", "pl", "bl"],
@@ -1151,6 +1157,7 @@
       if (t.includes("camino")) return "camino";
       if (t.includes("nacionaliz")) return "nacion";
       if (t.includes("produc")) return "produccion";
+      if (t.includes("espera")) return "espera";
       if (t.includes("indefin")) return "indef";
       return "na";
     }
@@ -1407,7 +1414,7 @@
     }
 
     function stateTag(r) {
-      const cls = { recibido: "recibido", camino: "camino", nacion: "nacion", produccion: "produccion", indef: "indef", na: "na" }[r.estado];
+      const cls = { recibido: "recibido", camino: "camino", nacion: "nacion", produccion: "produccion", indef: "indef", na: "na", espera: "espera" }[r.estado];
       return `<span class="st ${cls}">${esc(r.estadoRaw || "Sin estado")}</span>`;
     }
 
