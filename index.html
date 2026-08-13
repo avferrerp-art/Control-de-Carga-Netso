@@ -989,38 +989,83 @@
   <div id="uploadModal"
     style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.6);z-index:999;align-items:center;justify-content:center;backdrop-filter:blur(2px)">
     <div
-      style="background:var(--card);border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:0 10px 25px rgba(0,0,0,0.1);position:relative;border:1px solid var(--line)"
+      style="background:var(--card);border-radius:14px;padding:24px;width:100%;max-width:400px;box-shadow:0 10px 25px rgba(0,0,0,0.1);position:relative;border:1px solid var(--line);max-height:90vh;overflow-y:auto;"
       onclick="event.stopPropagation()">
       <button id="modalCloseX"
         style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;line-height:1;cursor:pointer;color:var(--muted);padding:0;">&times;</button>
-      <h3 style="margin:0 0 16px;font-size:19px">Subir documento</h3>
+      
+      <div id="modalStep1">
+        <h3 style="margin:0 0 16px;font-size:19px">Subir documento</h3>
 
-      <div id="modalAlert"
-        style="display:none; font-size:13px; font-weight:600; padding:10px 14px; border-radius:9px; margin-bottom:16px;">
+        <div id="modalAlert"
+          style="display:none; font-size:13px; font-weight:600; padding:10px 14px; border-radius:9px; margin-bottom:16px;">
+        </div>
+
+        <div
+          style="margin-bottom:18px;font-size:14px;background:var(--bg);padding:12px;border-radius:9px;border:1px solid var(--line);">
+          <div><span style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Carga:</span> <span
+              id="modalCargaText">Ejemplo de Proveedor - PI-1234</span></div>
+          <div style="margin-top:6px"><span
+              style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Etapa:</span> <span
+              id="modalEtapaText">Invoice</span></div>
+        </div>
+
+        <div class="fld" style="margin-bottom:16px">
+          <label for="modalDocNum">Número de documento</label>
+          <input type="text" id="modalDocNum" placeholder="Ej. INV-2023-001" />
+        </div>
+
+        <div class="fld" style="margin-bottom:24px">
+          <label for="modalDocFile">Archivo</label>
+          <input type="file" id="modalDocFile" accept=".pdf,.jpg,.jpeg,.png" style="padding:6px;background:#fff" />
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button id="modalCancel" class="btn btn-ghost">Cancelar</button>
+          <button id="modalSubmit" class="btn btn-primary">Subir</button>
+        </div>
       </div>
 
-      <div
-        style="margin-bottom:18px;font-size:14px;background:var(--bg);padding:12px;border-radius:9px;border:1px solid var(--line);">
-        <div><span style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Carga:</span> <span
-            id="modalCargaText">Ejemplo de Proveedor - PI-1234</span></div>
-        <div style="margin-top:6px"><span
-            style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Etapa:</span> <span
-            id="modalEtapaText">Invoice</span></div>
-      </div>
-
-      <div class="fld" style="margin-bottom:16px">
-        <label for="modalDocNum">Número de documento</label>
-        <input type="text" id="modalDocNum" placeholder="Ej. INV-2023-001" />
-      </div>
-
-      <div class="fld" style="margin-bottom:24px">
-        <label for="modalDocFile">Archivo</label>
-        <input type="file" id="modalDocFile" accept=".pdf,.jpg,.jpeg,.png" style="padding:6px;background:#fff" />
-      </div>
-
-      <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button id="modalCancel" class="btn btn-ghost">Cancelar</button>
-        <button id="modalSubmit" class="btn btn-primary">Subir</button>
+      <div id="modalStep2" style="display:none;">
+        <h3 style="margin:0 0 16px;font-size:19px">Datos del PI</h3>
+        <div class="fld" style="margin-bottom:16px">
+          <label for="piSubtotal">Subtotal del PI</label>
+          <input type="number" step="0.01" id="piSubtotal" placeholder="0.00" />
+        </div>
+        <div class="fld" style="margin-bottom:16px">
+          <label>Anticipo</label>
+          <div style="display:flex;gap:8px">
+            <input type="number" step="0.01" id="piAnticipoVal" placeholder="0" style="flex:1" />
+            <select id="piAnticipoTipo" style="width:70px;margin:0;">
+              <option value="%">%</option>
+              <option value="$">$</option>
+            </select>
+          </div>
+          <div id="piResumen" style="font-size:12px;color:var(--muted);margin-top:6px;min-height:15px"></div>
+        </div>
+        <div class="fld" style="margin-bottom:16px">
+          <label for="piProvSel">Proveedor</label>
+          <select id="piProvSel" style="margin-bottom:8px"></select>
+          <input type="text" id="piProvOtro" placeholder="Nombre del proveedor" style="display:none" />
+        </div>
+        <div class="fld" style="margin-bottom:16px">
+          <label for="piTerminos">Términos de crédito</label>
+          <input type="text" id="piTerminos" />
+        </div>
+        <div class="fld" style="margin-bottom:16px">
+          <label for="piComprobante">Comprobante de pago</label>
+          <input type="file" id="piComprobante" accept=".pdf,.jpg,.jpeg,.png" style="padding:6px;background:#fff;margin-bottom:8px" />
+          <label for="piFechaPago">Fecha de pago</label>
+          <input type="date" id="piFechaPago" />
+        </div>
+        <div class="fld" style="margin-bottom:24px">
+          <label for="piObs">Observaciones</label>
+          <textarea id="piObs" rows="3" style="width:100%;resize:vertical;border:1px solid var(--line);border-radius:6px;padding:8px;font-family:inherit;font-size:14px;"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button id="piCancel" class="btn btn-ghost">Ahora no</button>
+          <button id="piSubmit" class="btn btn-primary">Guardar</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1847,6 +1892,8 @@
 
     function abrirModal(btn) {
       const modal = document.getElementById("uploadModal");
+      document.getElementById("modalStep1").style.display = "block";
+      document.getElementById("modalStep2").style.display = "none";
       if (btn) {
         const d = btn.dataset;
         modal.dataset.stkey = d.stkey || "";
@@ -1941,12 +1988,43 @@
               renderAll();
             }
 
-            setModalAlert(`Documento subido. <a href="${data.url}" target="_blank" rel="noopener" style="color:#15803d;text-decoration:underline">Ver en Drive</a>`, false);
-            setTimeout(() => {
+            if (etapa === "pi") {
+              document.getElementById("modalStep1").style.display = "none";
+              document.getElementById("modalStep2").style.display = "block";
+              
+              const rowData = ROWS.find(r => r.id === id);
+              document.getElementById("piSubtotal").value = rowData?.subtotal || "";
+              
+              const selProv = document.getElementById("piProvSel");
+              const provs = [...new Set(ROWS.map(r => r.prov))].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b)));
+              selProv.innerHTML = provs.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join("") + `<option value="Otro">Otro</option>`;
+              
+              if (rowData?.prov && provs.includes(rowData.prov)) {
+                selProv.value = rowData.prov;
+              } else {
+                selProv.value = provs[0] || "Otro";
+              }
+              document.getElementById("piProvOtro").style.display = selProv.value === "Otro" ? "block" : "none";
+              document.getElementById("piProvOtro").value = "";
+              
+              document.getElementById("piAnticipoVal").value = "";
+              document.getElementById("piAnticipoTipo").value = "%";
+              document.getElementById("piResumen").textContent = "";
+              document.getElementById("piTerminos").value = "";
+              document.getElementById("piComprobante").value = "";
+              document.getElementById("piFechaPago").value = new Date().toISOString().split('T')[0];
+              document.getElementById("piObs").value = "";
+              
               btnSubmit.disabled = false;
               btnSubmit.textContent = originalText;
-              cerrarModal();
-            }, 2000);
+            } else {
+              setModalAlert(`Documento subido. <a href="${data.url}" target="_blank" rel="noopener" style="color:#15803d;text-decoration:underline">Ver en Drive</a>`, false);
+              setTimeout(() => {
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = originalText;
+                cerrarModal();
+              }, 2000);
+            }
           } else {
             setModalAlert(data?.error || "Error desconocido al subir", true);
             btnSubmit.disabled = false;
@@ -1965,6 +2043,76 @@
       };
       reader.onerror = () => setModalAlert("Error al leer el archivo localmente.", true);
       reader.readAsDataURL(file);
+    };
+
+    document.getElementById("piProvSel").onchange = e => {
+      document.getElementById("piProvOtro").style.display = e.target.value === "Otro" ? "block" : "none";
+    };
+
+    function recalcPI() {
+      const sub = parseFloat(document.getElementById("piSubtotal").value);
+      const antVal = parseFloat(document.getElementById("piAnticipoVal").value);
+      const tipo = document.getElementById("piAnticipoTipo").value;
+      const res = document.getElementById("piResumen");
+      
+      if (isNaN(sub) || sub <= 0) {
+        if (tipo === "$" && !isNaN(antVal) && antVal > 0) {
+          res.textContent = "Escribe primero el subtotal para poder calcular el porcentaje";
+        } else {
+          res.textContent = "";
+        }
+        return;
+      }
+      
+      if (isNaN(antVal) || antVal <= 0) {
+        res.textContent = `Total del PI: $${sub.toFixed(2)}`;
+        return;
+      }
+
+      let pct = 0, amt = 0;
+      if (tipo === "%") {
+        pct = antVal;
+        amt = sub * (pct / 100);
+      } else {
+        amt = antVal;
+        pct = (amt / sub) * 100;
+      }
+      const pagar = sub - amt;
+      res.textContent = `Total del PI: $${sub.toFixed(2)} · Anticipo: $${amt.toFixed(2)} (${pct.toFixed(2)}%) · Por pagar: $${pagar.toFixed(2)}`;
+    }
+
+    document.getElementById("piSubtotal").oninput = recalcPI;
+    document.getElementById("piAnticipoVal").oninput = recalcPI;
+    document.getElementById("piAnticipoTipo").onchange = recalcPI;
+
+    document.getElementById("piCancel").onclick = cerrarModal;
+
+    document.getElementById("piSubmit").onclick = () => {
+      const sub = parseFloat(document.getElementById("piSubtotal").value);
+      const antVal = parseFloat(document.getElementById("piAnticipoVal").value);
+      const tipo = document.getElementById("piAnticipoTipo").value;
+      
+      if (tipo === "$" && !isNaN(antVal) && antVal > 0 && (isNaN(sub) || sub <= 0)) {
+        alert("Escribe primero el subtotal para poder calcular el porcentaje");
+        return;
+      }
+
+      const provSel = document.getElementById("piProvSel").value;
+      const provOtro = document.getElementById("piProvOtro").value.trim();
+      
+      const payload = {
+        subtotal: isNaN(sub) ? null : sub,
+        anticipoVal: isNaN(antVal) ? null : antVal,
+        anticipoTipo: tipo,
+        proveedor: provSel === "Otro" ? provOtro : provSel,
+        terminos: document.getElementById("piTerminos").value.trim(),
+        comprobante: document.getElementById("piComprobante").files[0] ? document.getElementById("piComprobante").files[0].name : null,
+        fechaPago: document.getElementById("piFechaPago").value,
+        obs: document.getElementById("piObs").value.trim()
+      };
+      
+      console.log("Datos del PI a guardar:", payload);
+      cerrarModal();
     };
 
     window.__testModal = () => abrirModal();
