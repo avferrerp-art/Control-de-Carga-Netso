@@ -1034,20 +1034,26 @@
 
       <div id="modalStep2" style="display:none;">
         <h3 style="margin:0 0 16px;font-size:19px">Datos del PI</h3>
+        <div style="margin-bottom:18px;font-size:14px;background:var(--bg);padding:12px;border-radius:9px;border:1px solid var(--line);">
+          <div><span style="color:var(--muted);font-weight:600;display:inline-block;width:55px">Carga:</span> <span id="modalCargaText2"></span></div>
+          <div style="margin-top:8px;font-size:12px;color:var(--muted);font-weight:500;">Los campos que dejes vacíos no se modifican.</div>
+        </div>
         <div class="fld" style="margin-bottom:16px">
           <label for="piSubtotal">Subtotal del PI</label>
-          <input type="number" step="0.01" id="piSubtotal" placeholder="0.00" />
+          <input type="number" step="0.01" id="piSubtotal" placeholder="Dejar vacío para no cambiar" />
+          <div id="piSubtotalActual" style="font-size:12px;color:var(--muted);margin-top:4px;display:none;"></div>
         </div>
         <div class="fld" style="margin-bottom:16px">
           <label>Anticipo</label>
           <div style="display:flex;gap:8px">
-            <input type="number" step="0.01" id="piAnticipoVal" placeholder="0" style="flex:1" />
+            <input type="number" step="0.01" id="piAnticipoVal" placeholder="Dejar vacío para no cambiar" style="flex:1" />
             <select id="piAnticipoTipo" style="width:70px;margin:0;">
               <option value="%">%</option>
               <option value="$">$</option>
             </select>
           </div>
           <div id="piResumen" style="font-size:12px;color:var(--muted);margin-top:6px;min-height:15px"></div>
+          <div id="piAnticipoActual" style="font-size:12px;color:var(--muted);margin-top:2px;display:none;"></div>
         </div>
         <div class="fld" style="margin-bottom:16px">
           <label for="piProvSel">Proveedor</label>
@@ -1060,6 +1066,10 @@
         </div>
         <div class="fld" style="margin-bottom:16px">
           <label for="piComprobante">Comprobante de pago</label>
+          <div id="piComprobanteActualCont" style="display:none;margin-bottom:8px;background:var(--bg);padding:10px;border-radius:6px;border:1px solid var(--line);">
+            <a id="piComprobanteActualLink" href="#" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none;font-weight:500;display:inline-block;margin-bottom:4px;">Ver comprobante actual ↗</a>
+            <div style="font-size:12px;color:var(--muted);">Para reemplazarlo, borra la celda Pago PI URL en la hoja.</div>
+          </div>
           <input type="file" id="piComprobante" accept=".pdf,.jpg,.jpeg,.png"
             style="padding:6px;background:#fff;margin-bottom:8px" />
           <label for="piFechaPago">Fecha de pago</label>
@@ -1568,6 +1578,10 @@
             const lbl = s.label || "";
             uploadBtn = `<button style="margin-top:6px;font-size:11px;padding:2px 6px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation(); abrirModal(this)" data-rid="${esc(r.id)}" data-prov="${esc(r.prov)}" data-stkey="${esc(st.key)}" data-stname="${esc(st.name)}" data-docnum="${esc(lbl)}">⬆ Subir</button>`;
           }
+        }
+        if (st.key === "pi" && r.id) {
+          const mLeft = uploadBtn ? "margin-left:6px;" : "";
+          uploadBtn += `<button style="margin-top:6px;${mLeft}font-size:11px;padding:2px 6px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation(); abrirEditarPI('${esc(r.id)}')">Editar datos</button>`;
         }
         const dt = (s.date && s.label) ? `<div class="tl-date">${fmtDate(s.date)}</div>` : "";
         return `<div class="${cls}"><div class="tl-dot">${st.short}</div>
@@ -2160,6 +2174,83 @@
       }
       modal.style.display = "flex";
     }
+    function abrirEditarPI(id) {
+      const modal = document.getElementById("uploadModal");
+      const r = ROWS.find(x => x.id === id);
+      if (!r) return;
+
+      document.getElementById("modalStep1").style.display = "none";
+      document.getElementById("modalStep2").style.display = "block";
+      
+      modal.dataset.rid = r.id;
+      modal.dataset.stkey = "pi";
+      
+      document.getElementById("modalCargaText2").textContent = (r.prov || "Sin proveedor") + " - " + r.id;
+      
+      const elSubtotalActual = document.getElementById("piSubtotalActual");
+      if (r.subtotal) {
+        elSubtotalActual.textContent = `Actual: ${r.subtotal}`;
+        elSubtotalActual.style.display = "block";
+      } else {
+        elSubtotalActual.style.display = "none";
+      }
+
+      const elAnticipoActual = document.getElementById("piAnticipoActual");
+      const antMonto = r.totalAnticipo;
+      const antPct = r.anticipoPct;
+      if (antMonto || antPct) {
+        const antStr = (antMonto && antPct) ? `${antMonto} (${antPct})` : (antMonto || antPct);
+        elAnticipoActual.textContent = `Actual: ${antStr}`;
+        elAnticipoActual.style.display = "block";
+      } else {
+        elAnticipoActual.style.display = "none";
+      }
+
+      const elComprobanteCont = document.getElementById("piComprobanteActualCont");
+      const elComprobanteLink = document.getElementById("piComprobanteActualLink");
+      const elComprobanteInput = document.getElementById("piComprobante");
+      if (r.pagoPiUrl) {
+        elComprobanteCont.style.display = "block";
+        elComprobanteLink.href = r.pagoPiUrl;
+        elComprobanteInput.disabled = true;
+      } else {
+        elComprobanteCont.style.display = "none";
+        elComprobanteInput.disabled = false;
+      }
+      
+      document.getElementById("piSubtotal").value = "";
+      document.getElementById("piAnticipoVal").value = "";
+      document.getElementById("piAnticipoTipo").value = "%";
+      document.getElementById("piResumen").textContent = "";
+
+      const selProv = document.getElementById("piProvSel");
+      const provs = [...new Set(ROWS.map(x => x.prov))].filter(Boolean).sort((a, b) => String(a).localeCompare(String(b)));
+      selProv.innerHTML = provs.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join("") + `<option value="Otro">Otro</option>`;
+      
+      if (r.prov && provs.includes(r.prov)) {
+        selProv.value = r.prov;
+      } else {
+        selProv.value = provs[0] || "Otro";
+      }
+      document.getElementById("piProvOtro").style.display = selProv.value === "Otro" ? "block" : "none";
+      document.getElementById("piProvOtro").value = selProv.value === "Otro" && r.prov ? r.prov : "";
+
+      document.getElementById("piTerminos").value = r.terminos || "";
+      document.getElementById("piObs").value = r.obs || "";
+      
+      if (r.fechaPago) {
+        const y = r.fechaPago.getFullYear();
+        const m = String(r.fechaPago.getMonth() + 1).padStart(2, "0");
+        const d = String(r.fechaPago.getDate()).padStart(2, "0");
+        document.getElementById("piFechaPago").value = `${y}-${m}-${d}`;
+      } else {
+        document.getElementById("piFechaPago").value = "";
+      }
+      
+      document.getElementById("piComprobante").value = "";
+      
+      modal.style.display = "flex";
+    }
     function cerrarModal() {
       if (document.getElementById("modalSubmit").disabled) return;
       document.getElementById("uploadModal").style.display = "none";
@@ -2248,7 +2339,40 @@
               document.getElementById("modalStep2").style.display = "block";
 
               const rowData = ROWS.find(r => r.id === id);
-              document.getElementById("piSubtotal").value = rowData?.subtotal || "";
+              document.getElementById("modalCargaText2").textContent = (rowData?.prov || "Sin proveedor") + " - " + id;
+              
+              const elSubtotalActual2 = document.getElementById("piSubtotalActual");
+              if (rowData?.subtotal) {
+                elSubtotalActual2.textContent = `Actual: ${rowData.subtotal}`;
+                elSubtotalActual2.style.display = "block";
+              } else {
+                elSubtotalActual2.style.display = "none";
+              }
+
+              const elAnticipoActual2 = document.getElementById("piAnticipoActual");
+              const antMonto2 = rowData?.totalAnticipo;
+              const antPct2 = rowData?.anticipoPct;
+              if (antMonto2 || antPct2) {
+                const antStr2 = (antMonto2 && antPct2) ? `${antMonto2} (${antPct2})` : (antMonto2 || antPct2);
+                elAnticipoActual2.textContent = `Actual: ${antStr2}`;
+                elAnticipoActual2.style.display = "block";
+              } else {
+                elAnticipoActual2.style.display = "none";
+              }
+
+              const elComprobanteCont2 = document.getElementById("piComprobanteActualCont");
+              const elComprobanteLink2 = document.getElementById("piComprobanteActualLink");
+              const elComprobanteInput2 = document.getElementById("piComprobante");
+              if (rowData?.pagoPiUrl) {
+                elComprobanteCont2.style.display = "block";
+                elComprobanteLink2.href = rowData.pagoPiUrl;
+                elComprobanteInput2.disabled = true;
+              } else {
+                elComprobanteCont2.style.display = "none";
+                elComprobanteInput2.disabled = false;
+              }
+
+              document.getElementById("piSubtotal").value = "";
 
               const selProv = document.getElementById("piProvSel");
               const provs = [...new Set(ROWS.map(r => r.prov))].filter(Boolean).sort((a, b) => String(a).localeCompare(String(b)));
