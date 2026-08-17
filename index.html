@@ -1142,8 +1142,46 @@
     const SHEET_ID = "1g1MO7BAW4GwyM74vmR3s00_j8DEFh_QMZ2kUiIPMZ00";  // solo para el botón "abrir hoja"
     const SHEET_NAME = "CONTROL DE CARGAS";
     const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
-    const UPLOAD_TOKEN = "netso-prod-4t9w2k7m3x8q";
-    const UPLOAD_URL = "https://script.google.com/macros/s/AKfycbwI93pWOThAv08ZuvGWOQdDvkslhp4lDGbDrPR2fBHTcb46mCrzUExiVN05iUWlP4z4/exec";
+    /* ============================================================
+       BACKEND SEGÚN EL ENTORNO
+       El dominio real escribe en la hoja de producción. Cualquier
+       otro sitio —localhost, file://, Deploy Previews— escribe en la
+       hoja COPIA. Así no hay que cambiar nada a mano antes de un merge,
+       y es imposible que el dominio acabe apuntando a pruebas.
+       Si algún día cambia el dominio, hay que añadirlo en DOMINIOS_PROD.
+       ============================================================ */
+    const BACKENDS = {
+      produccion: {
+        token: "netso-prod-4t9w2k7m3x8q",
+        url: "https://script.google.com/macros/s/AKfycbwI93pWOThAv08ZuvGWOQdDvkslhp4lDGbDrPR2fBHTcb46mCrzUExiVN05iUWlP4z4/exec",
+      },
+      pruebas: {
+        token: "netso-pruebas-7k3m9x2q8f",
+        url: "https://script.google.com/macros/s/AKfycbxunQr7hdyv2-pU95MeQl5ZsnlGJtlpbNa8Zqc7XxkAO_USJ5SjN3XUMLHgHRarnCK1jg/exec",
+      },
+    };
+
+    /* Lista blanca a propósito: solo estos dominios son producción.
+       Todo lo demás cae en pruebas, que es el lado seguro del error. */
+    const DOMINIOS_PROD = ["controlcarganetso.netlify.app"];
+    const ES_PRODUCCION = DOMINIOS_PROD.indexOf(location.hostname) !== -1;
+    const ENTORNO = ES_PRODUCCION ? "produccion" : "pruebas";
+    const UPLOAD_TOKEN = BACKENDS[ENTORNO].token;
+    const UPLOAD_URL = BACKENDS[ENTORNO].url;
+
+    /* Aviso visible cuando NO es producción. Una regla invisible sería
+       una trampa nueva: así siempre sabes en qué hoja estás escribiendo. */
+    if (!ES_PRODUCCION) {
+      const avisoEntorno = document.createElement("div");
+      avisoEntorno.textContent = "ENTORNO DE PRUEBAS · hoja COPIA";
+      avisoEntorno.style.cssText =
+        "position:fixed;bottom:12px;right:12px;z-index:9998;" +
+        "background:var(--amber,#f59e0b);color:#fff;font-size:11px;" +
+        "font-weight:700;letter-spacing:.4px;padding:6px 11px;" +
+        "border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.25);" +
+        "pointer-events:none;font-family:inherit;";
+      document.body.appendChild(avisoEntorno);
+    }
 
     /* URL de la hoja PUBLICADA (Archivo → Compartir → Publicar en la Web).
        Ojo: este ID (2PACX-…) es distinto al ID del documento. Si republicas la
