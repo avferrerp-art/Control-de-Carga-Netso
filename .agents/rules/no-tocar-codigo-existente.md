@@ -109,5 +109,15 @@ Estas y solo estas modificaciones a código protegido están permitidas:
   lectura y lanzar varias fuentes en paralelo, siempre que se conserven TODAS
   las fuentes existentes como respaldo.
 
+## Excepción autorizada · 2026-08-17
+
+Se autoriza modificar **una única línea** dentro de `loadLive()`: la que
+lanza `Promise.all([fetchApi(), fetchSheet()])`. El objetivo es que la hoja
+publicada solo se consulte cuando la API falla, para eliminar el pintado
+con datos cacheados.
+
+Sigue prohibido tocar el cuerpo de `fetchApi`, el de `fetchSheet`,
+`updateRows`, y el bloque de error posterior.
+
 Cualquier otra modificación a la lista de funciones y constantes protegidas
 sigue prohibida. Si una tarea parece exigirla, detente y pregunta.
