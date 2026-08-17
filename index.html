@@ -1951,7 +1951,9 @@
         return last || "no se pudo contactar la hoja";
       };
 
-      const [apiOk, sheetResult] = await Promise.all([fetchApi(), fetchSheet()]);
+      const apiOk = await fetchApi();
+      let sheetResult = true;
+      if (!apiOk) sheetResult = await fetchSheet();
 
       if (!apiOk && sheetResult !== true) {
         statusUI("err", "Sin conexión a la hoja");
