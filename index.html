@@ -1103,6 +1103,18 @@
           <input type="text" id="piConceptoPago" maxlength="200"
             placeholder="Ej. Anticipo del PI, pago de aduana…" />
         </div>
+        <div class="fld" style="margin-bottom:16px">
+          <label>Pagos pendientes</label>
+          <div id="piPendientesList" style="margin-bottom:10px;font-size:14px;"></div>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <input type="date" id="piPendFecha" style="flex:1" />
+            <input type="text" id="piPendMonto" placeholder="Monto" style="flex:1" />
+          </div>
+          <input type="text" id="piPendConcepto" maxlength="200"
+            placeholder="Concepto (opcional)" style="margin-bottom:8px" />
+          <button type="button" id="piPendAdd" class="btn btn-ghost"
+            onclick="anadirPendiente()">Añadir pendiente</button>
+        </div>
         <div class="fld" style="margin-bottom:24px">
           <label for="piObs">Observaciones</label>
           <textarea id="piObs" rows="3"
@@ -1792,6 +1804,41 @@
           + `<span>${conceptoTxt}</span>`
           + `</div>`;
       }).join("");
+    }
+
+    /* Pinta la lista de pendientes dentro del modal del PI. Reutiliza la
+       misma función que el detalle para que no puedan divergir. */
+    function pintarPendientesModal(pendientes) {
+      const el = document.getElementById("piPendientesList");
+      if (!el) return;
+      el.innerHTML = (pendientes && pendientes.length)
+        ? listaPendientesHTML(pendientes)
+        : `<div style="color:var(--muted);margin-bottom:4px;">No hay pagos pendientes programados</div>`;
+      /* Los campos de alta se vacían al abrir el modal, para que no
+         arrastren lo que se escribió para otra carga. */
+      ["piPendFecha", "piPendMonto", "piPendConcepto"].forEach(function (k) {
+        const c = document.getElementById(k);
+        if (c) c.value = "";
+      });
+    }
+
+    /* Alta de un pago pendiente desde el modal del PI. De momento solo
+       registra en consola lo que enviaría; la conexión con el backend
+       llega en el siguiente paso. */
+    async function anadirPendiente() {
+      const modal = document.getElementById("uploadModal");
+      const id = modal.dataset.rid;
+      if (!id) return;
+
+      const fecha = document.getElementById("piPendFecha").value;
+      const monto = document.getElementById("piPendMonto").value.trim();
+      const concepto = document.getElementById("piPendConcepto").value.trim();
+
+      if (!fecha) { setModalAlert("Falta la fecha del pago pendiente.", true); return; }
+      if (!monto) { setModalAlert("Falta el monto del pago pendiente.", true); return; }
+
+      setModalAlert("", false);
+      console.log("NUEVO PENDIENTE ->", { id: id, fecha: fecha, monto: monto, concepto: concepto });
     }
 
     function detailHTML(r) {
@@ -2493,6 +2540,7 @@
       } else {
         elComprobantesList.innerHTML = `<div style="color:var(--muted);margin-bottom:4px;">Todavía no hay comprobantes registrados</div>`;
       }
+      pintarPendientesModal(r.pendientes);
       elComprobanteInput.disabled = false;
 
       document.getElementById("piSubtotal").value = "";
@@ -2645,6 +2693,7 @@
               } else {
                 elComprobantesList.innerHTML = `<div style="color:var(--muted);margin-bottom:4px;">Todavía no hay comprobantes registrados</div>`;
               }
+              pintarPendientesModal(rowData.pendientes);
               elComprobanteInput2.disabled = false;
 
               document.getElementById("piSubtotal").value = "";
