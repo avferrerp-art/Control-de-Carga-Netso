@@ -1099,6 +1099,9 @@
             style="padding:6px;background:#fff;margin-bottom:8px" />
           <label for="piFechaPago">Fecha del pago</label>
           <input type="date" id="piFechaPago" />
+          <label for="piConceptoPago" style="margin-top:8px">Concepto (opcional)</label>
+          <input type="text" id="piConceptoPago" maxlength="200"
+            placeholder="Ej. Anticipo del PI, pago de aduana…" />
         </div>
         <div class="fld" style="margin-bottom:24px">
           <label for="piObs">Observaciones</label>
@@ -2462,6 +2465,7 @@
       }
 
       document.getElementById("piComprobante").value = "";
+      document.getElementById("piConceptoPago").value = "";
 
       modal.style.display = "flex";
     }
@@ -2606,6 +2610,7 @@
               document.getElementById("piComprobante").value = "";
               document.getElementById("piFechaPago").value = new Date().toISOString().split('T')[0];
               document.getElementById("piObs").value = "";
+              document.getElementById("piConceptoPago").value = "";
 
               btnSubmit.disabled = false;
               btnSubmit.textContent = originalText;
@@ -2717,6 +2722,7 @@
       }
 
       const obs = document.getElementById("piObs").value.trim();
+      const conceptoPago = document.getElementById("piConceptoPago").value.trim();
 
       const payload = { token: UPLOAD_TOKEN, accion: "guardarDatosPI", id };
       if (!isNaN(sub) && sub > 0) payload.subtotal = sub;
@@ -2788,6 +2794,7 @@
             accion: "agregarPago",
             id,
             fecha: fechaPago || "",
+            concepto: conceptoPago,
             filename: file.name,
             mimeType: file.type,
             base64
@@ -2813,6 +2820,7 @@
               
               fileInput.value = "";
               document.getElementById("piFechaPago").value = new Date().toISOString().split('T')[0];
+              document.getElementById("piConceptoPago").value = "";
               refrescarDesdeBackend();
 
               setTimeout(() => {

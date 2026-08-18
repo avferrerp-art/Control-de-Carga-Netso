@@ -132,5 +132,18 @@ Se autoriza añadir reglas CSS nuevas para `select.st` y una constante nueva
 Sigue prohibido tocar `stateTag`, `cambiarEstado`, `renderTable`, y las
 clases CSS `.st.*` existentes y sus colores.
 
+## Excepción autorizada · 2026-08-18 · lista de comprobantes
+
+Se autoriza sustituir, dentro de `detailHTML()`, el bloque que pinta la
+lista de comprobantes de pago por una llamada a la función nueva
+`listaComprobantesHTML(pagos)`, y hacer lo mismo en los dos puntos del
+modal del PI donde se rellena `piComprobantesList`.
+
+El objetivo es que las tres listas dejen de estar duplicadas y muestren
+también el concepto del pago.
+
+Sigue prohibido tocar el resto de `detailHTML`, `timelineHTML`,
+`normalize`, `fmtDate` y `pdate`.
+
 Cualquier otra modificación a la lista de funciones y constantes protegidas
 sigue prohibida. Si una tarea parece exigirla, detente y pregunta.
