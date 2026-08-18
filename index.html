@@ -1674,9 +1674,9 @@
       }
     }
 
-    /* Edita a mano el número de un documento ya subido. De momento solo
-       registra en consola lo que enviaría; la conexión con el backend
-       llega en el siguiente paso. */
+    /* Edita a mano el número de un documento ya subido. Sobrescribe siempre:
+       el valor anterior queda registrado en la pestaña LOG de la hoja,
+       así que es reversible. */
     async function editarNumeroDoc(id, etapa) {
       const fila = ROWS.find(x => x.id === id);
       if (!fila || !fila.stages[etapa]) return;
@@ -1690,7 +1690,42 @@
       if (!numero) { alert("El número no puede quedar vacío."); return; }
       if (numero === actual.trim()) return;
 
-      console.log("EDITAR NUMERO ->", { id: id, etapa: etapa, actual: actual, numero: numero });
+      /* Pintamos el cambio de inmediato: la llamada al backend tarda unos
+         segundos y sin esto la interfaz parece congelada. Si falla, se
+         revierte al valor anterior. */
+      const teniaAntes = fila.stages[etapa].has;
+      fila.stages[etapa].label = numero;
+      fila.stages[etapa].has = true;
+      calcRowStatus(fila);
+      renderAll();
+
+      const revertir = () => {
+        fila.stages[etapa].label = actual;
+        fila.stages[etapa].has = teniaAntes;
+        calcRowStatus(fila);
+        renderAll();
+      };
+
+      try {
+        const res = await fetch(UPLOAD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            token: UPLOAD_TOKEN, accion: "guardarNumeroDoc",
+            id: id, etapa: etapa, numero: numero
+          })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          refrescarDesdeBackend();
+        } else {
+          revertir();
+          alert("Error: " + (data.error || "Desconocido"));
+        }
+      } catch (e) {
+        revertir();
+        alert("Error de red: " + e.message);
+      }
     }
 
     function detailHTML(r) {
