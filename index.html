@@ -1807,6 +1807,29 @@
       }).join("");
     }
 
+    /* La misma lista, pero con acciones. El detalle sigue usando la
+       versión de solo lectura: los botones solo tienen sentido dentro
+       del modal, que es donde se gestiona. */
+    function listaPendientesModalHTML(pendientes) {
+      if (!pendientes || !pendientes.length) return "";
+      const estiloBtn = "font-size:11px;padding:2px 6px;border:1px solid var(--line);"
+        + "background:#fff;border-radius:6px;cursor:pointer;";
+      return pendientes.map(function (p) {
+        const f = pdate(p.fecha);
+        const fechaTxt = f ? fmtDate(f) : esc(p.fecha || "");
+        const conceptoTxt = p.concepto
+          ? esc(p.concepto)
+          : `<span style="color:var(--muted)">Sin concepto</span>`;
+        return `<div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap">`
+          + `<span style="color:var(--muted);white-space:nowrap">${fechaTxt}</span>`
+          + `<span style="font-weight:600;white-space:nowrap">${esc(p.monto || "")}</span>`
+          + `<span style="flex:1;min-width:80px">${conceptoTxt}</span>`
+          + `<button type="button" title="Marcar como pagado" style="${estiloBtn}" onclick="marcarPendientePagado('${esc(p.idPendiente)}')">✓ Saldar</button>`
+          + `<button type="button" title="Borrar este pendiente" style="${estiloBtn}" onclick="eliminarPendiente('${esc(p.idPendiente)}')">🗑</button>`
+          + `</div>`;
+      }).join("");
+    }
+
     /* Aviso local del bloque de pendientes. No se usa setModalAlert porque
        ese pinta arriba del todo del modal y, con el modal desplazado hacia
        abajo, queda fuera de la vista justo cuando hace falta leerlo. */
@@ -1825,7 +1848,7 @@
       const el = document.getElementById("piPendientesList");
       if (!el) return;
       el.innerHTML = (pendientes && pendientes.length)
-        ? listaPendientesHTML(pendientes)
+        ? listaPendientesModalHTML(pendientes)
         : `<div style="color:var(--muted);margin-bottom:4px;">No hay pagos pendientes programados</div>`;
       /* Los campos de alta se vacían al abrir el modal, para que no
          arrastren lo que se escribió para otra carga. */
@@ -1882,6 +1905,48 @@
         btn.disabled = false;
         btn.textContent = textoOriginal;
       }
+    }
+
+    /* Saldar y borrar comparten todo salvo los mensajes: una acción sobre
+       un pendiente, releer de la hoja y repintar la lista. */
+    async function accionPendiente(accion, idPendiente, pregunta, exito) {
+      if (!confirm(pregunta)) return;
+      const modal = document.getElementById("uploadModal");
+      const id = modal.dataset.rid;
+
+      avisoPendiente("Guardando…", false);
+      try {
+        const res = await fetch(UPLOAD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            token: UPLOAD_TOKEN, accion: accion, idPendiente: idPendiente
+          })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          await refrescarDesdeBackend();
+          const r = ROWS.find(x => x.id === id);
+          pintarPendientesModal(r ? r.pendientes : []);
+          avisoPendiente(exito, false);
+        } else {
+          avisoPendiente(data.error || "Error desconocido", true);
+        }
+      } catch (e) {
+        avisoPendiente("Error de red: " + e.message, true);
+      }
+    }
+
+    function marcarPendientePagado(idPendiente) {
+      accionPendiente("saldarPendiente", idPendiente,
+        "¿Marcar este pago pendiente como pagado?\n\nDesaparecerá de la lista, pero la fila queda en la hoja como historial.",
+        "Pago marcado como pagado.");
+    }
+
+    function eliminarPendiente(idPendiente) {
+      accionPendiente("borrarPendiente", idPendiente,
+        "¿Borrar este pago pendiente?\n\nSe elimina la fila de la hoja. Queda copiada en el LOG por si hay que recuperarla.",
+        "Pago pendiente borrado.");
     }
 
     function detailHTML(r) {

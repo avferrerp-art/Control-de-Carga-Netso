@@ -157,5 +157,18 @@ PENDIENTES" encima del de comprobantes.
 Sigue prohibido tocar el resto de `loadLive`, `normalize`, `renderTable`
 y `applyFilters`.
 
+## Excepción autorizada · 2026-08-18 · modelo de pagos
+
+Se autoriza que `normalize` lea tres columnas nuevas —`Pagado`,
+`Programado` y `Sin programar`— y las añada al objeto de cada fila.
+
+Se autoriza sustituir, dentro de `detailHTML()`, las dos líneas que
+pintan "Anticipo" y "Por Pagar" por una condición que muestre esos dos
+campos cuando la carga NO tiene plan de pagos, y los tres nuevos cuando
+sí lo tiene.
+
+Sigue prohibido tocar la lógica de `stages`, `missing` y `sem` de
+`normalize`, y el resto de `detailHTML`.
+
 Cualquier otra modificación a la lista de funciones y constantes protegidas
 sigue prohibida. Si una tarea parece exigirla, detente y pregunta.
