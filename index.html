@@ -1775,6 +1775,25 @@
       }).join("");
     }
 
+    /* Lista de pagos programados que todavía no se han hecho. Misma
+       forma que la de comprobantes, pero con el monto en lugar del
+       enlace al archivo. */
+    function listaPendientesHTML(pendientes) {
+      if (!pendientes || !pendientes.length) return "";
+      return pendientes.map(function (p) {
+        const f = pdate(p.fecha);
+        const fechaTxt = f ? fmtDate(f) : esc(p.fecha || "");
+        const conceptoTxt = p.concepto
+          ? esc(p.concepto)
+          : `<span style="color:var(--muted)">Sin concepto</span>`;
+        return `<div style="display:flex;gap:12px;margin-bottom:6px;align-items:baseline">`
+          + `<span style="color:var(--muted);white-space:nowrap">${fechaTxt}</span>`
+          + `<span style="font-weight:600;white-space:nowrap">${esc(p.monto || "")}</span>`
+          + `<span>${conceptoTxt}</span>`
+          + `</div>`;
+      }).join("");
+    }
+
     function detailHTML(r) {
       const kv = (k, v) => `<div><div class="dg-k">${k}</div><div class="dg-v">${v || "—"}</div></div>`;
 
@@ -1826,6 +1845,12 @@
       ${kv("Anticipo", antStr !== "—" ? antStr : "")}
       ${kv("Por Pagar", esc(r.porPagar))}
       ${kv("Términos de crédito", esc(r.termCredito))}
+      <div style="grid-column: 1 / -1; margin-top: 4px;">
+        <div class="dg-k">PAGOS PENDIENTES</div>
+        <div class="dg-v" style="margin-top:4px;">
+          ${(r.pendientes && r.pendientes.length) ? listaPendientesHTML(r.pendientes) : "—"}
+        </div>
+      </div>
       <div style="grid-column: 1 / -1; margin-top: 4px;">
         <div class="dg-k">COMPROBANTES DE PAGO</div>
         <div class="dg-v" style="margin-top:4px;">
@@ -2025,6 +2050,26 @@
       });
     }
 
+    /* Reparte los pagos pendientes por carga. Solo los que siguen en
+       estado "pendiente": los saldados quedan en la hoja como historial
+       pero no se muestran en el dashboard. */
+    function asignarPendientes(pendientes, rows) {
+      const byId = {};
+      (pendientes || []).forEach(p => {
+        if (String(p.estado || "").toLowerCase() !== "pendiente") return;
+        if (!byId[p.id]) byId[p.id] = [];
+        byId[p.id].push(p);
+      });
+      rows.forEach(r => {
+        const mios = byId[r.id] || [];
+        mios.sort((a, b) => {
+          const dA = pdate(a.fecha), dB = pdate(b.fecha);
+          return (dA ? dA.getTime() : 0) - (dB ? dB.getTime() : 0);
+        });
+        r.pendientes = mios;
+      });
+    }
+
     /* ============================================================
        CARGA DE DATOS
        ============================================================ */
@@ -2067,6 +2112,7 @@
             if (data.ok && data.filas) {
               const rows = normalize(data.matriz, data.links);
               asignarPagos(data.pagos, rows);
+              asignarPendientes(data.pendientes, rows);
               if (rows.length) {
                 apiYaPinto = true;
                 updateRows(rows);
@@ -2146,6 +2192,7 @@
           if (data.ok && data.filas) {
             const rows = normalize(data.matriz, data.links);
             asignarPagos(data.pagos, rows);
+            asignarPendientes(data.pendientes, rows);
             if (rows.length) {
               const oldOpen = OPEN_ROW;
               ROWS = rows;
