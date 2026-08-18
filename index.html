@@ -1114,6 +1114,7 @@
             placeholder="Concepto (opcional)" style="margin-bottom:8px" />
           <button type="button" id="piPendAdd" class="btn btn-ghost"
             onclick="anadirPendiente()">Añadir pendiente</button>
+          <div id="piPendAviso" style="display:none;font-size:12px;font-weight:600;margin-top:8px"></div>
         </div>
         <div class="fld" style="margin-bottom:24px">
           <label for="piObs">Observaciones</label>
@@ -1806,6 +1807,18 @@
       }).join("");
     }
 
+    /* Aviso local del bloque de pendientes. No se usa setModalAlert porque
+       ese pinta arriba del todo del modal y, con el modal desplazado hacia
+       abajo, queda fuera de la vista justo cuando hace falta leerlo. */
+    function avisoPendiente(msg, esError) {
+      const el = document.getElementById("piPendAviso");
+      if (!el) return;
+      if (!msg) { el.style.display = "none"; el.textContent = ""; return; }
+      el.textContent = msg;
+      el.style.display = "block";
+      el.style.color = esError ? "var(--red)" : "var(--green-d)";
+    }
+
     /* Pinta la lista de pendientes dentro del modal del PI. Reutiliza la
        misma función que el detalle para que no puedan divergir. */
     function pintarPendientesModal(pendientes) {
@@ -1820,11 +1833,11 @@
         const c = document.getElementById(k);
         if (c) c.value = "";
       });
+      avisoPendiente("", false);
     }
 
-    /* Alta de un pago pendiente desde el modal del PI. De momento solo
-       registra en consola lo que enviaría; la conexión con el backend
-       llega en el siguiente paso. */
+    /* Alta de un pago pendiente desde el modal del PI. Es independiente
+       del botón Guardar: no toca los datos del PI ni los comprobantes. */
     async function anadirPendiente() {
       const modal = document.getElementById("uploadModal");
       const id = modal.dataset.rid;
@@ -1834,11 +1847,41 @@
       const monto = document.getElementById("piPendMonto").value.trim();
       const concepto = document.getElementById("piPendConcepto").value.trim();
 
-      if (!fecha) { setModalAlert("Falta la fecha del pago pendiente.", true); return; }
-      if (!monto) { setModalAlert("Falta el monto del pago pendiente.", true); return; }
+      if (!fecha) { avisoPendiente("Falta la fecha del pago pendiente.", true); return; }
+      if (!monto) { avisoPendiente("Falta el monto del pago pendiente.", true); return; }
 
-      setModalAlert("", false);
-      console.log("NUEVO PENDIENTE ->", { id: id, fecha: fecha, monto: monto, concepto: concepto });
+      const btn = document.getElementById("piPendAdd");
+      const textoOriginal = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Añadiendo…";
+      avisoPendiente("", false);
+
+      try {
+        const res = await fetch(UPLOAD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            token: UPLOAD_TOKEN, accion: "crearPendiente",
+            id: id, fecha: fecha, monto: monto, concepto: concepto
+          })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          /* Se relee de la hoja para que el monto aparezca con el formato
+             de la columna y no como número crudo. */
+          await refrescarDesdeBackend();
+          const r = ROWS.find(x => x.id === id);
+          pintarPendientesModal(r ? r.pendientes : []);
+          avisoPendiente("Pago pendiente añadido.", false);
+        } else {
+          avisoPendiente(data.error || "Error desconocido", true);
+        }
+      } catch (e) {
+        avisoPendiente("Error de red: " + e.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = textoOriginal;
+      }
     }
 
     function detailHTML(r) {
