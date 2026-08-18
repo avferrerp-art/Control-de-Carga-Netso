@@ -539,6 +539,30 @@
       color: #374151
     }
 
+    /* El estado del detalle es un desplegable con aspecto de badge:
+       hereda el color y la forma de .st, pero se puede pulsar. La lista
+       desplegada la dibuja el navegador y no se puede estilar. */
+    select.st {
+      border: 0;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      cursor: pointer;
+      font-family: inherit;
+      line-height: 1.4;
+      padding-right: 24px;
+      max-width: 210px;
+    }
+
+    select.st:hover {
+      filter: brightness(0.96);
+    }
+
+    select.st:disabled {
+      opacity: .6;
+      cursor: wait;
+    }
+
     /* Track (7 pasos compactos) */
     .track {
       display: flex;
@@ -1249,6 +1273,13 @@
        rechaza esa etapa a propósito, para no escribir el número encima del
        enlace. */
     const STAGES_CON_NUMERO = ["pi", "inv", "pl", "bl"];
+
+    /* Los 7 estados válidos, con la escritura EXACTA que acepta el
+       backend. Si cambian allí, hay que cambiarlos aquí. */
+    const ESTADOS_VALIDOS = [
+      "En cotización", "En produccion", "En espera de despacho",
+      "En camino", "Proc. Nacionalización", "Recibido", "Indefinido",
+    ];
     const ESTADO_LABEL = {
       produccion: "En producción", camino: "En camino", nacion: "Proc. Nacionalización",
       recibido: "Recibido", indef: "Indefinido", na: "Sin estado",
@@ -1731,11 +1762,32 @@
     function detailHTML(r) {
       const kv = (k, v) => `<div><div class="dg-k">${k}</div><div class="dg-v">${v || "—"}</div></div>`;
 
-      let estCtrl = stateTag(r);
+      /* El estado se edita desde el propio badge: un solo control en vez
+         del badge y el desplegable repitiendo el mismo dato. */
+      let estCtrl;
       if (r.id) {
-        const opts = ["En cotización", "En produccion", "En espera de despacho", "En camino", "Proc. Nacionalización", "Recibido", "Indefinido"];
-        const optHTML = opts.map(o => `<option value="${o}" ${r.estadoRaw === o ? "selected" : ""}>${o}</option>`).join("");
-        estCtrl += ` <select class="fld" style="padding:2px 6px; font-size:12px; height:24px; width:auto; display:inline-block; margin-left:8px;" onchange="cambiarEstado(this, '${esc(r.id)}')" data-actual="${esc(r.estadoRaw)}">${optHTML}</select>`;
+        const clsEstado = {
+          recibido: "recibido", camino: "camino", nacion: "nacion",
+          produccion: "produccion", indef: "indef", na: "na",
+          espera: "espera", cotizacion: "cotizacion",
+        }[r.estado] || "na";
+        /* Si el estado de la hoja no es exactamente uno de los 7, se muestra
+           el valor crudo y no seleccionable, en vez de mentir mostrando el
+           primero de la lista como si fuera el actual. */
+        const enLista = ESTADOS_VALIDOS.indexOf(r.estadoRaw) !== -1;
+        const optCrudo = enLista ? ""
+          : `<option value="" selected disabled>${esc(r.estadoRaw || "Sin estado")}</option>`;
+        const optHTML = ESTADOS_VALIDOS.map(o =>
+          `<option value="${esc(o)}" ${r.estadoRaw === o ? "selected" : ""}>${esc(o)}</option>`
+        ).join("");
+        estCtrl = `<span style="position:relative;display:inline-block">`
+          + `<select class="st ${clsEstado}" title="Cambiar el estado de esta carga"`
+          + ` onchange="cambiarEstado(this, '${esc(r.id)}')"`
+          + ` data-actual="${esc(r.estadoRaw)}">${optCrudo}${optHTML}</select>`
+          + `<span style="position:absolute;right:9px;top:50%;transform:translateY(-50%);pointer-events:none;font-size:9px;opacity:.65">▾</span>`
+          + `</span>`;
+      } else {
+        estCtrl = stateTag(r);
       }
 
       const antMonto = esc(r.totalAnticipo);
