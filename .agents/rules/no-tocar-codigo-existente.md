@@ -119,5 +119,18 @@ con datos cacheados.
 Sigue prohibido tocar el cuerpo de `fetchApi`, el de `fetchSheet`,
 `updateRows`, y el bloque de error posterior.
 
+## Excepción autorizada · 2026-08-18 · estado pulsable
+
+Se autoriza sustituir, dentro de `detailHTML()`, el bloque que construye
+`estCtrl` (el badge más el `<select>` de estado) por un único control: un
+`<select>` con las clases `.st` que ya existen, de modo que el propio badge
+sea el desplegable.
+
+Se autoriza añadir reglas CSS nuevas para `select.st` y una constante nueva
+`ESTADOS_VALIDOS`.
+
+Sigue prohibido tocar `stateTag`, `cambiarEstado`, `renderTable`, y las
+clases CSS `.st.*` existentes y sus colores.
+
 Cualquier otra modificación a la lista de funciones y constantes protegidas
 sigue prohibida. Si una tarea parece exigirla, detente y pregunta.
