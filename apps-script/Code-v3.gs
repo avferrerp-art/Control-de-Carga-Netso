@@ -25,6 +25,7 @@ const STAGE_COLUMNS = {
 
 /* Los 6 estados válidos. El backend rechaza cualquier otro. */
 const ESTADOS = [
+  "En cotización",
   "En produccion",
   "En espera de despacho",
   "En camino",
