@@ -1142,13 +1142,6 @@
       <div class="fld" style="margin-bottom:24px">
         <label for="ncEstado">Estado inicial</label>
         <select id="ncEstado">
-          <option value="En cotización" selected>En cotización</option>
-          <option value="En produccion">En produccion</option>
-          <option value="En espera de despacho">En espera de despacho</option>
-          <option value="En camino">En camino</option>
-          <option value="Proc. Nacionalizacion">Proc. Nacionalizacion</option>
-          <option value="Recibido">Recibido</option>
-          <option value="Indefinido">Indefinido</option>
         </select>
       </div>
 
@@ -2233,6 +2226,19 @@
       document.getElementById("fSearch").value = "";
       PIPE_FILTER = null; OPEN_ROW = null; renderAll();
     };
+
+    /* El desplegable de "Nueva carga" se rellena desde ESTADOS_VALIDOS para
+       que no pueda desincronizarse de lo que acepta el backend. Antes estaba
+       escrito a mano y "Proc. Nacionalizacion" iba sin tilde, así que el
+       backend rechazaba la carga con "Estado inválido". */
+    (function () {
+      const selNc = document.getElementById("ncEstado");
+      if (selNc) {
+        selNc.innerHTML = ESTADOS_VALIDOS.map(function (o, i) {
+          return `<option value="${esc(o)}"${i === 0 ? " selected" : ""}>${esc(o)}</option>`;
+        }).join("");
+      }
+    })();
 
     loadLive();
 
