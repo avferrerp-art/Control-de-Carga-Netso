@@ -1099,6 +1099,9 @@
             style="padding:6px;background:#fff;margin-bottom:8px" />
           <label for="piFechaPago">Fecha del pago</label>
           <input type="date" id="piFechaPago" />
+          <label for="piConceptoPago" style="margin-top:8px">Concepto (opcional)</label>
+          <input type="text" id="piConceptoPago" maxlength="200"
+            placeholder="Ej. Anticipo del PI, pago de aduana…" />
         </div>
         <div class="fld" style="margin-bottom:24px">
           <label for="piObs">Observaciones</label>
@@ -1752,6 +1755,26 @@
       }
     }
 
+    /* Lista de comprobantes de pago con su fecha y concepto. La usan el
+       detalle de la carga y el modal del PI, para que no puedan divergir.
+       El concepto es opcional: los comprobantes que no lo tengan muestran
+       "Sin concepto" en gris. */
+    function listaComprobantesHTML(pagos) {
+      if (!pagos || !pagos.length) return "";
+      return pagos.map(function (p) {
+        const f = pdate(p.fecha);
+        const fechaTxt = f ? fmtDate(f) : esc(p.fecha || "");
+        const conceptoTxt = p.concepto
+          ? esc(p.concepto)
+          : `<span style="color:var(--muted)">Sin concepto</span>`;
+        return `<div style="display:flex;gap:12px;margin-bottom:6px;align-items:baseline">`
+          + `<span style="color:var(--muted);white-space:nowrap">${fechaTxt}</span>`
+          + `<span>${conceptoTxt}</span>`
+          + `<a href="${esc(p.url)}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none;font-weight:500;white-space:nowrap">Ver comprobante ↗</a>`
+          + `</div>`;
+      }).join("");
+    }
+
     function detailHTML(r) {
       const kv = (k, v) => `<div><div class="dg-k">${k}</div><div class="dg-v">${v || "—"}</div></div>`;
 
@@ -1806,12 +1829,7 @@
       <div style="grid-column: 1 / -1; margin-top: 4px;">
         <div class="dg-k">COMPROBANTES DE PAGO</div>
         <div class="dg-v" style="margin-top:4px;">
-          ${(r.pagos && r.pagos.length) ? r.pagos.map(p => `
-            <div style="display:flex; gap:12px; margin-bottom:6px;">
-              <span style="color:var(--muted)">${fmtDate(pdate(p.fecha))}</span>
-              <a href="${esc(p.url)}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">Ver comprobante ↗</a>
-            </div>
-          `).join("") : "—"}
+          ${(r.pagos && r.pagos.length) ? listaComprobantesHTML(r.pagos) : "—"}
         </div>
       </div>
       <div style="grid-column: 1 / -1; margin-top: 4px;">
@@ -2424,9 +2442,7 @@
       const elComprobantesList = document.getElementById("piComprobantesList");
       const elComprobanteInput = document.getElementById("piComprobante");
       if (r.pagos && r.pagos.length > 0) {
-        elComprobantesList.innerHTML = r.pagos.map(p => 
-          `<div style="margin-bottom:6px;"><span style="color:var(--muted);display:inline-block;width:80px">${p.fecha || ''}</span><a href="${p.url}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none;font-weight:500;">Ver comprobante ↗</a></div>`
-        ).join("");
+        elComprobantesList.innerHTML = listaComprobantesHTML(r.pagos);
       } else {
         elComprobantesList.innerHTML = `<div style="color:var(--muted);margin-bottom:4px;">Todavía no hay comprobantes registrados</div>`;
       }
@@ -2462,6 +2478,7 @@
       }
 
       document.getElementById("piComprobante").value = "";
+      document.getElementById("piConceptoPago").value = "";
 
       modal.style.display = "flex";
     }
@@ -2577,9 +2594,7 @@
               const elComprobantesList = document.getElementById("piComprobantesList");
               const elComprobanteInput2 = document.getElementById("piComprobante");
               if (rowData?.pagos && rowData.pagos.length > 0) {
-                elComprobantesList.innerHTML = rowData.pagos.map(p => 
-                  `<div style="margin-bottom:6px;"><span style="color:var(--muted);display:inline-block;width:80px">${p.fecha || ''}</span><a href="${p.url}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none;font-weight:500;">Ver comprobante ↗</a></div>`
-                ).join("");
+                elComprobantesList.innerHTML = listaComprobantesHTML(rowData.pagos);
               } else {
                 elComprobantesList.innerHTML = `<div style="color:var(--muted);margin-bottom:4px;">Todavía no hay comprobantes registrados</div>`;
               }
@@ -2606,6 +2621,7 @@
               document.getElementById("piComprobante").value = "";
               document.getElementById("piFechaPago").value = new Date().toISOString().split('T')[0];
               document.getElementById("piObs").value = "";
+              document.getElementById("piConceptoPago").value = "";
 
               btnSubmit.disabled = false;
               btnSubmit.textContent = originalText;
@@ -2717,6 +2733,7 @@
       }
 
       const obs = document.getElementById("piObs").value.trim();
+      const conceptoPago = document.getElementById("piConceptoPago").value.trim();
 
       const payload = { token: UPLOAD_TOKEN, accion: "guardarDatosPI", id };
       if (!isNaN(sub) && sub > 0) payload.subtotal = sub;
@@ -2788,6 +2805,7 @@
             accion: "agregarPago",
             id,
             fecha: fechaPago || "",
+            concepto: conceptoPago,
             filename: file.name,
             mimeType: file.type,
             base64
@@ -2813,6 +2831,7 @@
               
               fileInput.value = "";
               document.getElementById("piFechaPago").value = new Date().toISOString().split('T')[0];
+              document.getElementById("piConceptoPago").value = "";
               refrescarDesdeBackend();
 
               setTimeout(() => {
