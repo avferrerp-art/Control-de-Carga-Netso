@@ -1244,6 +1244,11 @@
        hoja (STAGES los incluye para el parseo) pero se muestran como datos abajo,
        junto a naviera y contenedor, no como etapas con un archivo que abrir. */
     const TRACK = STAGES.filter(s => s.doc);
+    /* Etapas que tienen columna propia para el NÚMERO del documento en la
+       hoja. RFQ queda fuera: la hoja no tiene columna 'RFQ No' y el backend
+       rechaza esa etapa a propósito, para no escribir el número encima del
+       enlace. */
+    const STAGES_CON_NUMERO = ["pi", "inv", "pl", "bl"];
     const ESTADO_LABEL = {
       produccion: "En producción", camino: "En camino", nacion: "Proc. Nacionalización",
       recibido: "Recibido", indef: "Indefinido", na: "Sin estado",
@@ -1622,6 +1627,10 @@
           const mLeft = uploadBtn ? "margin-left:6px;" : "";
           uploadBtn += `<button style="margin-top:6px;${mLeft}font-size:11px;padding:2px 6px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation(); abrirEditarPI('${esc(r.id)}')">Editar datos</button>`;
         }
+        if (r.id && STAGES_CON_NUMERO.indexOf(st.key) !== -1) {
+          const mLeftNum = uploadBtn ? "margin-left:6px;" : "";
+          uploadBtn += `<button title="Editar el número de este documento" style="margin-top:6px;${mLeftNum}font-size:11px;padding:2px 6px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;" onclick="event.stopPropagation(); editarNumeroDoc('${esc(r.id)}','${st.key}')">✏️</button>`;
+        }
         const dt = (s.date && s.label) ? `<div class="tl-date">${fmtDate(s.date)}</div>` : "";
         return `<div class="${cls}"><div class="tl-dot">${st.short}</div>
       <div class="tl-name">${st.name}</div><div class="tl-val">${val}</div>${uploadBtn}${dt}</div>`;
@@ -1662,6 +1671,60 @@
         sel.value = actual;
       } finally {
         sel.disabled = false;
+      }
+    }
+
+    /* Edita a mano el número de un documento ya subido. Sobrescribe siempre:
+       el valor anterior queda registrado en la pestaña LOG de la hoja,
+       así que es reversible. */
+    async function editarNumeroDoc(id, etapa) {
+      const fila = ROWS.find(x => x.id === id);
+      if (!fila || !fila.stages[etapa]) return;
+      const st = STAGES.find(x => x.key === etapa);
+      const nombreEtapa = st ? st.name : etapa;
+      const actual = fila.stages[etapa].label || "";
+
+      const nuevo = prompt("Número del documento — " + nombreEtapa, actual);
+      if (nuevo === null) return;
+      const numero = nuevo.trim();
+      if (!numero) { alert("El número no puede quedar vacío."); return; }
+      if (numero === actual.trim()) return;
+
+      /* Pintamos el cambio de inmediato: la llamada al backend tarda unos
+         segundos y sin esto la interfaz parece congelada. Si falla, se
+         revierte al valor anterior. */
+      const teniaAntes = fila.stages[etapa].has;
+      fila.stages[etapa].label = numero;
+      fila.stages[etapa].has = true;
+      calcRowStatus(fila);
+      renderAll();
+
+      const revertir = () => {
+        fila.stages[etapa].label = actual;
+        fila.stages[etapa].has = teniaAntes;
+        calcRowStatus(fila);
+        renderAll();
+      };
+
+      try {
+        const res = await fetch(UPLOAD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            token: UPLOAD_TOKEN, accion: "guardarNumeroDoc",
+            id: id, etapa: etapa, numero: numero
+          })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          refrescarDesdeBackend();
+        } else {
+          revertir();
+          alert("Error: " + (data.error || "Desconocido"));
+        }
+      } catch (e) {
+        revertir();
+        alert("Error de red: " + e.message);
       }
     }
 
