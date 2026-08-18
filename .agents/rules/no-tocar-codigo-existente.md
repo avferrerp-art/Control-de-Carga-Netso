@@ -145,5 +145,17 @@ también el concepto del pago.
 Sigue prohibido tocar el resto de `detailHTML`, `timelineHTML`,
 `normalize`, `fmtDate` y `pdate`.
 
+## Excepción autorizada · 2026-08-18 · pagos pendientes
+
+Se autoriza añadir UNA línea dentro de `loadLive()`, en la función interna
+`fetchApi`, justo después de la llamada existente a `asignarPagos(...)`,
+para repartir también los pagos pendientes entre las filas.
+
+Se autoriza añadir dentro de `detailHTML()` un bloque nuevo "PAGOS
+PENDIENTES" encima del de comprobantes.
+
+Sigue prohibido tocar el resto de `loadLive`, `normalize`, `renderTable`
+y `applyFilters`.
+
 Cualquier otra modificación a la lista de funciones y constantes protegidas
 sigue prohibida. Si una tarea parece exigirla, detente y pregunta.
