@@ -333,6 +333,19 @@
       font-family: inherit
     }
 
+    /* Los filtros de Estado, Proveedor y Agente son de selección
+       múltiple: se ven como una lista en vez de como un desplegable. */
+    .fld select[multiple] {
+      padding: 6px;
+      min-height: 106px;
+      overflow-y: auto;
+    }
+
+    .fld select[multiple] option {
+      padding: 4px 6px;
+      border-radius: 6px;
+    }
+
     .fld.grow {
       flex: 1;
       min-width: 240px
@@ -931,18 +944,16 @@
     <div class="panel" style="margin-top:18px">
       <h3>Filtros</h3>
       <div class="filters">
-        <div class="fld"><label>Estado</label><select id="fEstado">
-            <option value="">Todos</option>
-          </select></div>
-        <div class="fld"><label>Proveedor</label><select id="fProv">
-            <option value="">Todos</option>
-          </select></div>
-        <div class="fld"><label>Agente aduanal</label><select id="fAgente">
-            <option value="">Todos</option>
-          </select></div>
+        <div class="fld"><label>Estado</label><select id="fEstado" multiple size="4"></select></div>
+        <div class="fld"><label>Proveedor</label><select id="fProv" multiple size="4"></select></div>
+        <div class="fld"><label>Agente aduanal</label><select id="fAgente" multiple size="4"></select></div>
         <div class="fld grow"><label>Buscar (proveedor, PI, invoice, BL, contenedor)</label><input type="text"
             id="fSearch" placeholder="Escribe para filtrar…" /></div>
         <span class="clear" id="clearFilters">Limpiar filtros</span>
+        <div style="flex-basis:100%;font-size:12px;color:var(--muted);margin-top:2px">
+          Haz clic en cada uno para elegir varios a la vez, y vuelve a hacer clic
+          para quitarlo. Sin nada seleccionado se muestran todos.
+        </div>
       </div>
     </div>
 
@@ -1608,21 +1619,28 @@
       b.style.display = "block"; b.innerHTML = html;
     }
 
+    /* Cada filtro devuelve un ARRAY de valores elegidos. Un array vacío
+       significa "todos": es lo que sustituye a la antigua opción "Todos". */
     function filters() {
+      const elegidos = id =>
+        [...document.getElementById(id).selectedOptions].map(o => o.value).filter(Boolean);
       return {
-        estado: document.getElementById("fEstado").value,
-        prov: document.getElementById("fProv").value,
-        agente: document.getElementById("fAgente").value,
+        estado: elegidos("fEstado"),
+        prov: elegidos("fProv"),
+        agente: elegidos("fAgente"),
         q: document.getElementById("fSearch").value.trim().toLowerCase(),
       };
     }
-    function applyFilters(rows) {
+
+    /* ignorarPipe: el pipeline necesita las filas SIN su propio filtro,
+       porque si no, al pulsar una etapa se encogería a sí mismo. */
+    function applyFilters(rows, ignorarPipe) {
       const f = filters();
       return rows.filter(r => {
-        if (f.estado && r.estado !== f.estado) return false;
-        if (f.prov && r.prov !== f.prov) return false;
-        if (f.agente && r.agente !== f.agente) return false;
-        if (PIPE_FILTER && r.stages[PIPE_FILTER].has) return false;
+        if (f.estado.length && f.estado.indexOf(r.estado) === -1) return false;
+        if (f.prov.length && f.prov.indexOf(r.prov) === -1) return false;
+        if (f.agente.length && f.agente.indexOf(r.agente) === -1) return false;
+        if (!ignorarPipe && PIPE_FILTER && r.stages[PIPE_FILTER].has) return false;
         if (f.q) {
           const hay = [r.prov, r.cont, r.agente, r.estadoRaw, r.id,
           ...STAGES.map(s => r.stages[s.key].label)].join(" ").toLowerCase();
@@ -2162,21 +2180,26 @@
       });
     }
 
-    function fillSelect(sel, values, allLabel) {
-      const cur = sel.value;
-      sel.innerHTML = `<option value="">${allLabel}</option>` +
-        [...values].filter(Boolean).sort((a, b) => String(a).localeCompare(String(b)))
-          .map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
-      sel.value = cur;
+    /* Rellena un desplegable múltiple conservando lo que estuviera elegido.
+       Ya no lleva opción "Todos": no elegir nada equivale a elegirlos todos. */
+    function fillSelect(sel, values) {
+      const elegidos = new Set([...sel.selectedOptions].map(o => o.value));
+      sel.innerHTML = [...values].filter(Boolean)
+        .sort((a, b) => String(a).localeCompare(String(b)))
+        .map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+      [...sel.options].forEach(o => { o.selected = elegidos.has(o.value); });
     }
+
     function refreshOptions() {
+      const selEst = document.getElementById("fEstado");
+      const elegidosEst = new Set([...selEst.selectedOptions].map(o => o.value));
       const est = new Set(ROWS.map(r => r.estado));
-      const sel = document.getElementById("fEstado"), cur = sel.value;
-      sel.innerHTML = `<option value="">Todos</option>` +
-        [...est].sort().map(k => `<option value="${k}">${ESTADO_LABEL[k]}</option>`).join("");
-      sel.value = cur;
-      fillSelect(document.getElementById("fProv"), new Set(ROWS.map(r => r.prov)), "Todos");
-      fillSelect(document.getElementById("fAgente"), new Set(ROWS.map(r => r.agente)), "Todos");
+      selEst.innerHTML = [...est].sort()
+        .map(k => `<option value="${k}">${ESTADO_LABEL[k]}</option>`).join("");
+      [...selEst.options].forEach(o => { o.selected = elegidosEst.has(o.value); });
+
+      fillSelect(document.getElementById("fProv"), new Set(ROWS.map(r => r.prov)));
+      fillSelect(document.getElementById("fAgente"), new Set(ROWS.map(r => r.agente)));
     }
     function renderAlerts() {
       const p = document.getElementById("alertsPanel"), l = document.getElementById("alertsList");
@@ -2454,9 +2477,27 @@
     document.getElementById("btnUpload").onclick = () => document.getElementById("fileInput").click();
     document.getElementById("fileInput").onchange = e => { if (e.target.files[0]) loadFile(e.target.files[0]); };
     ["fEstado", "fProv", "fAgente"].forEach(id => document.getElementById(id).onchange = () => { OPEN_ROW = null; renderAll(); });
+    /* Selección múltiple con un clic simple, sin Cmd ni Ctrl.
+       Por defecto el navegador sustituye la selección al hacer clic y
+       obliga a mantener una tecla para acumular. Aquí se intercepta el
+       mousedown para alternar cada opción por separado.
+       El listener va sobre el <select>, no sobre las <option>: así
+       sobrevive a que refreshOptions reconstruya la lista entera. */
+    ["fEstado", "fProv", "fAgente"].forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      sel.addEventListener("mousedown", e => {
+        if (e.target.tagName !== "OPTION") return;
+        e.preventDefault();
+        e.target.selected = !e.target.selected;
+        sel.dispatchEvent(new Event("change"));
+      });
+    });
     document.getElementById("fSearch").oninput = () => { OPEN_ROW = null; renderTable(applyFilters(ROWS)); };
     document.getElementById("clearFilters").onclick = () => {
-      ["fEstado", "fProv", "fAgente"].forEach(id => document.getElementById(id).value = "");
+      ["fEstado", "fProv", "fAgente"].forEach(id => {
+        [...document.getElementById(id).options].forEach(o => { o.selected = false; });
+      });
       document.getElementById("fSearch").value = "";
       PIPE_FILTER = null; OPEN_ROW = null; renderAll();
     };
