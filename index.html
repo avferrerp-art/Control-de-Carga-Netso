@@ -1475,6 +1475,9 @@
         obs: find(["Observaciones"]),
         fechaPago: find(["Fecha de pago", "Fecha de pago PI", "Fecha pago"]),
         pagoPiUrl: find(["Pago PI URL", "URL de pago PI", "Pago PI"]),
+        pagado: find(["Pagado"]),
+        programado: find(["Programado"]),
+        sinProgramar: find(["Sin programar"]),
       };
       // Índices por etapa
       const sIdx = {};
@@ -1555,6 +1558,9 @@
           obs: get(r, col.obs),
           fechaPago: pdate(get(r, col.fechaPago)),
           pagoPiUrl: getLink(col.pagoPiUrl) || (isUrl(get(r, col.pagoPiUrl)) ? get(r, col.pagoPiUrl) : ""),
+          pagado: get(r, col.pagado),
+          programado: get(r, col.programado),
+          sinProgramar: get(r, col.sinProgramar),
         };
         // solo documentos: ETD/ETA nunca cuentan como faltante
         calcRowStatus(row);
@@ -1997,8 +2003,9 @@
         : esc(r.cont))}
       ${kv("Agente aduanal", esc(r.agente))}
       ${kv("Total", esc(r.total))}
-      ${kv("Anticipo", antStr !== "—" ? antStr : "")}
-      ${kv("Por Pagar", esc(r.porPagar))}
+      ${r.tienePlanPagos
+          ? kv("Pagado", esc(r.pagado)) + kv("Programado", esc(r.programado)) + kv("Sin programar", esc(r.sinProgramar))
+          : kv("Anticipo", antStr !== "—" ? antStr : "") + kv("Por Pagar", esc(r.porPagar))}
       ${kv("Términos de crédito", esc(r.termCredito))}
       <div style="grid-column: 1 / -1; margin-top: 4px;">
         <div class="dg-k">PAGOS PENDIENTES</div>
@@ -2207,10 +2214,16 @@
 
     /* Reparte los pagos pendientes por carga. Solo los que siguen en
        estado "pendiente": los saldados quedan en la hoja como historial
-       pero no se muestran en el dashboard. */
+       pero no se muestran en el dashboard.
+       Aparte, marca si la carga tiene algún pendiente, saldado o no: es
+       lo que decide si se muestra el modelo de pagos nuevo. No vale
+       mirar solo los no saldados, porque una carga con todo ya pagado
+       se quedaría sin ninguno justo cuando el modelo nuevo es el bueno. */
     function asignarPendientes(pendientes, rows) {
       const byId = {};
+      const conPlan = new Set();
       (pendientes || []).forEach(p => {
+        conPlan.add(p.id);
         if (String(p.estado || "").toLowerCase() !== "pendiente") return;
         if (!byId[p.id]) byId[p.id] = [];
         byId[p.id].push(p);
@@ -2222,6 +2235,7 @@
           return (dA ? dA.getTime() : 0) - (dB ? dB.getTime() : 0);
         });
         r.pendientes = mios;
+        r.tienePlanPagos = conPlan.has(r.id);
       });
     }
 
