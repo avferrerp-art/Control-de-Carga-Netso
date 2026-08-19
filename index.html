@@ -1103,6 +1103,19 @@
           <input type="text" id="piConceptoPago" maxlength="200"
             placeholder="Ej. Anticipo del PI, pago de aduana…" />
         </div>
+        <div class="fld" style="margin-bottom:16px">
+          <label>Pagos pendientes</label>
+          <div id="piPendientesList" style="margin-bottom:10px;font-size:14px;"></div>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <input type="date" id="piPendFecha" style="flex:1" />
+            <input type="text" id="piPendMonto" placeholder="Monto" style="flex:1" />
+          </div>
+          <input type="text" id="piPendConcepto" maxlength="200"
+            placeholder="Concepto (opcional)" style="margin-bottom:8px" />
+          <button type="button" id="piPendAdd" class="btn btn-ghost"
+            onclick="anadirPendiente()">Añadir pendiente</button>
+          <div id="piPendAviso" style="display:none;font-size:12px;font-weight:600;margin-top:8px"></div>
+        </div>
         <div class="fld" style="margin-bottom:24px">
           <label for="piObs">Observaciones</label>
           <textarea id="piObs" rows="3"
@@ -1462,6 +1475,9 @@
         obs: find(["Observaciones"]),
         fechaPago: find(["Fecha de pago", "Fecha de pago PI", "Fecha pago"]),
         pagoPiUrl: find(["Pago PI URL", "URL de pago PI", "Pago PI"]),
+        pagado: find(["Pagado"]),
+        programado: find(["Programado"]),
+        sinProgramar: find(["Sin programar"]),
       };
       // Índices por etapa
       const sIdx = {};
@@ -1542,6 +1558,9 @@
           obs: get(r, col.obs),
           fechaPago: pdate(get(r, col.fechaPago)),
           pagoPiUrl: getLink(col.pagoPiUrl) || (isUrl(get(r, col.pagoPiUrl)) ? get(r, col.pagoPiUrl) : ""),
+          pagado: get(r, col.pagado),
+          programado: get(r, col.programado),
+          sinProgramar: get(r, col.sinProgramar),
         };
         // solo documentos: ETD/ETA nunca cuentan como faltante
         calcRowStatus(row);
@@ -1775,6 +1794,167 @@
       }).join("");
     }
 
+    /* Lista de pagos programados que todavía no se han hecho. Misma
+       forma que la de comprobantes, pero con el monto en lugar del
+       enlace al archivo. */
+    function listaPendientesHTML(pendientes) {
+      if (!pendientes || !pendientes.length) return "";
+      return pendientes.map(function (p) {
+        const f = pdate(p.fecha);
+        const fechaTxt = f ? fmtDate(f) : esc(p.fecha || "");
+        const conceptoTxt = p.concepto
+          ? esc(p.concepto)
+          : `<span style="color:var(--muted)">Sin concepto</span>`;
+        return `<div style="display:flex;gap:12px;margin-bottom:6px;align-items:baseline">`
+          + `<span style="color:var(--muted);white-space:nowrap">${fechaTxt}</span>`
+          + `<span style="font-weight:600;white-space:nowrap">${esc(p.monto || "")}</span>`
+          + `<span>${conceptoTxt}</span>`
+          + `</div>`;
+      }).join("");
+    }
+
+    /* La misma lista, pero con acciones. El detalle sigue usando la
+       versión de solo lectura: los botones solo tienen sentido dentro
+       del modal, que es donde se gestiona. */
+    function listaPendientesModalHTML(pendientes) {
+      if (!pendientes || !pendientes.length) return "";
+      const estiloBtn = "font-size:11px;padding:2px 6px;border:1px solid var(--line);"
+        + "background:#fff;border-radius:6px;cursor:pointer;";
+      return pendientes.map(function (p) {
+        const f = pdate(p.fecha);
+        const fechaTxt = f ? fmtDate(f) : esc(p.fecha || "");
+        const conceptoTxt = p.concepto
+          ? esc(p.concepto)
+          : `<span style="color:var(--muted)">Sin concepto</span>`;
+        return `<div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap">`
+          + `<span style="color:var(--muted);white-space:nowrap">${fechaTxt}</span>`
+          + `<span style="font-weight:600;white-space:nowrap">${esc(p.monto || "")}</span>`
+          + `<span style="flex:1;min-width:80px">${conceptoTxt}</span>`
+          + `<button type="button" title="Marcar como pagado" style="${estiloBtn}" onclick="marcarPendientePagado('${esc(p.idPendiente)}')">✓ Saldar</button>`
+          + `<button type="button" title="Borrar este pendiente" style="${estiloBtn}" onclick="eliminarPendiente('${esc(p.idPendiente)}')">🗑</button>`
+          + `</div>`;
+      }).join("");
+    }
+
+    /* Aviso local del bloque de pendientes. No se usa setModalAlert porque
+       ese pinta arriba del todo del modal y, con el modal desplazado hacia
+       abajo, queda fuera de la vista justo cuando hace falta leerlo. */
+    function avisoPendiente(msg, esError) {
+      const el = document.getElementById("piPendAviso");
+      if (!el) return;
+      if (!msg) { el.style.display = "none"; el.textContent = ""; return; }
+      el.textContent = msg;
+      el.style.display = "block";
+      el.style.color = esError ? "var(--red)" : "var(--green-d)";
+    }
+
+    /* Pinta la lista de pendientes dentro del modal del PI. Reutiliza la
+       misma función que el detalle para que no puedan divergir. */
+    function pintarPendientesModal(pendientes) {
+      const el = document.getElementById("piPendientesList");
+      if (!el) return;
+      el.innerHTML = (pendientes && pendientes.length)
+        ? listaPendientesModalHTML(pendientes)
+        : `<div style="color:var(--muted);margin-bottom:4px;">No hay pagos pendientes programados</div>`;
+      /* Los campos de alta se vacían al abrir el modal, para que no
+         arrastren lo que se escribió para otra carga. */
+      ["piPendFecha", "piPendMonto", "piPendConcepto"].forEach(function (k) {
+        const c = document.getElementById(k);
+        if (c) c.value = "";
+      });
+      avisoPendiente("", false);
+    }
+
+    /* Alta de un pago pendiente desde el modal del PI. Es independiente
+       del botón Guardar: no toca los datos del PI ni los comprobantes. */
+    async function anadirPendiente() {
+      const modal = document.getElementById("uploadModal");
+      const id = modal.dataset.rid;
+      if (!id) return;
+
+      const fecha = document.getElementById("piPendFecha").value;
+      const monto = document.getElementById("piPendMonto").value.trim();
+      const concepto = document.getElementById("piPendConcepto").value.trim();
+
+      if (!fecha) { avisoPendiente("Falta la fecha del pago pendiente.", true); return; }
+      if (!monto) { avisoPendiente("Falta el monto del pago pendiente.", true); return; }
+
+      const btn = document.getElementById("piPendAdd");
+      const textoOriginal = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Añadiendo…";
+      avisoPendiente("", false);
+
+      try {
+        const res = await fetch(UPLOAD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            token: UPLOAD_TOKEN, accion: "crearPendiente",
+            id: id, fecha: fecha, monto: monto, concepto: concepto
+          })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          /* Se relee de la hoja para que el monto aparezca con el formato
+             de la columna y no como número crudo. */
+          await refrescarDesdeBackend();
+          const r = ROWS.find(x => x.id === id);
+          pintarPendientesModal(r ? r.pendientes : []);
+          avisoPendiente("Pago pendiente añadido.", false);
+        } else {
+          avisoPendiente(data.error || "Error desconocido", true);
+        }
+      } catch (e) {
+        avisoPendiente("Error de red: " + e.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = textoOriginal;
+      }
+    }
+
+    /* Saldar y borrar comparten todo salvo los mensajes: una acción sobre
+       un pendiente, releer de la hoja y repintar la lista. */
+    async function accionPendiente(accion, idPendiente, pregunta, exito) {
+      if (!confirm(pregunta)) return;
+      const modal = document.getElementById("uploadModal");
+      const id = modal.dataset.rid;
+
+      avisoPendiente("Guardando…", false);
+      try {
+        const res = await fetch(UPLOAD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            token: UPLOAD_TOKEN, accion: accion, idPendiente: idPendiente
+          })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          await refrescarDesdeBackend();
+          const r = ROWS.find(x => x.id === id);
+          pintarPendientesModal(r ? r.pendientes : []);
+          avisoPendiente(exito, false);
+        } else {
+          avisoPendiente(data.error || "Error desconocido", true);
+        }
+      } catch (e) {
+        avisoPendiente("Error de red: " + e.message, true);
+      }
+    }
+
+    function marcarPendientePagado(idPendiente) {
+      accionPendiente("saldarPendiente", idPendiente,
+        "¿Marcar este pago pendiente como pagado?\n\nDesaparecerá de la lista, pero la fila queda en la hoja como historial.",
+        "Pago marcado como pagado.");
+    }
+
+    function eliminarPendiente(idPendiente) {
+      accionPendiente("borrarPendiente", idPendiente,
+        "¿Borrar este pago pendiente?\n\nSe elimina la fila de la hoja. Queda copiada en el LOG por si hay que recuperarla.",
+        "Pago pendiente borrado.");
+    }
+
     function detailHTML(r) {
       const kv = (k, v) => `<div><div class="dg-k">${k}</div><div class="dg-v">${v || "—"}</div></div>`;
 
@@ -1823,9 +2003,16 @@
         : esc(r.cont))}
       ${kv("Agente aduanal", esc(r.agente))}
       ${kv("Total", esc(r.total))}
-      ${kv("Anticipo", antStr !== "—" ? antStr : "")}
-      ${kv("Por Pagar", esc(r.porPagar))}
+      ${r.tienePlanPagos
+          ? kv("Pagado", esc(r.pagado)) + kv("Programado", esc(r.programado)) + kv("Sin programar", esc(r.sinProgramar))
+          : kv("Anticipo", antStr !== "—" ? antStr : "") + kv("Por Pagar", esc(r.porPagar))}
       ${kv("Términos de crédito", esc(r.termCredito))}
+      <div style="grid-column: 1 / -1; margin-top: 4px;">
+        <div class="dg-k">PAGOS PENDIENTES</div>
+        <div class="dg-v" style="margin-top:4px;">
+          ${(r.pendientes && r.pendientes.length) ? listaPendientesHTML(r.pendientes) : "—"}
+        </div>
+      </div>
       <div style="grid-column: 1 / -1; margin-top: 4px;">
         <div class="dg-k">COMPROBANTES DE PAGO</div>
         <div class="dg-v" style="margin-top:4px;">
@@ -2025,6 +2212,33 @@
       });
     }
 
+    /* Reparte los pagos pendientes por carga. Solo los que siguen en
+       estado "pendiente": los saldados quedan en la hoja como historial
+       pero no se muestran en el dashboard.
+       Aparte, marca si la carga tiene algún pendiente, saldado o no: es
+       lo que decide si se muestra el modelo de pagos nuevo. No vale
+       mirar solo los no saldados, porque una carga con todo ya pagado
+       se quedaría sin ninguno justo cuando el modelo nuevo es el bueno. */
+    function asignarPendientes(pendientes, rows) {
+      const byId = {};
+      const conPlan = new Set();
+      (pendientes || []).forEach(p => {
+        conPlan.add(p.id);
+        if (String(p.estado || "").toLowerCase() !== "pendiente") return;
+        if (!byId[p.id]) byId[p.id] = [];
+        byId[p.id].push(p);
+      });
+      rows.forEach(r => {
+        const mios = byId[r.id] || [];
+        mios.sort((a, b) => {
+          const dA = pdate(a.fecha), dB = pdate(b.fecha);
+          return (dA ? dA.getTime() : 0) - (dB ? dB.getTime() : 0);
+        });
+        r.pendientes = mios;
+        r.tienePlanPagos = conPlan.has(r.id);
+      });
+    }
+
     /* ============================================================
        CARGA DE DATOS
        ============================================================ */
@@ -2067,6 +2281,7 @@
             if (data.ok && data.filas) {
               const rows = normalize(data.matriz, data.links);
               asignarPagos(data.pagos, rows);
+              asignarPendientes(data.pendientes, rows);
               if (rows.length) {
                 apiYaPinto = true;
                 updateRows(rows);
@@ -2146,6 +2361,7 @@
           if (data.ok && data.filas) {
             const rows = normalize(data.matriz, data.links);
             asignarPagos(data.pagos, rows);
+            asignarPendientes(data.pendientes, rows);
             if (rows.length) {
               const oldOpen = OPEN_ROW;
               ROWS = rows;
@@ -2446,6 +2662,7 @@
       } else {
         elComprobantesList.innerHTML = `<div style="color:var(--muted);margin-bottom:4px;">Todavía no hay comprobantes registrados</div>`;
       }
+      pintarPendientesModal(r.pendientes);
       elComprobanteInput.disabled = false;
 
       document.getElementById("piSubtotal").value = "";
@@ -2598,6 +2815,7 @@
               } else {
                 elComprobantesList.innerHTML = `<div style="color:var(--muted);margin-bottom:4px;">Todavía no hay comprobantes registrados</div>`;
               }
+              pintarPendientesModal(rowData.pendientes);
               elComprobanteInput2.disabled = false;
 
               document.getElementById("piSubtotal").value = "";
