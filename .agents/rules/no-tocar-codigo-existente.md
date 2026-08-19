@@ -190,3 +190,25 @@ Sigue prohibido tocar `normalize`, `renderTable`, `renderKPIs`,
 
 Cualquier otra modificación a la lista de funciones y constantes protegidas
 sigue prohibida. Si una tarea parece exigirla, detente y pregunta.
+
+## Excepción autorizada · 2026-08-19 · estados que faltan en la dona
+
+Cuando se añadieron los estados "En espera de despacho" (clave `espera`) y
+"En cotización" (clave `cotizacion`) se actualizaron `estadoKey`, `REQUIRED`
+y `stateTag`, pero se quedaron fuera de dos sitios. La consecuencia es que
+una carga en cualquiera de esos dos estados **no aparece en la gráfica de
+estados**: no se cuenta en ninguna porción, desaparece sin aviso.
+
+Se autoriza, y solo para tapar ese hueco:
+
+- `ESTADO_LABEL`: añadir las claves `espera: "En espera de despacho"` y
+  `cotizacion: "En cotización"`. No cambies ninguna de las seis que ya
+  existen.
+- `renderCharts`: añadir `"espera"` y `"cotizacion"` **al final** del array
+  `order`, y sus dos colores **al final** del array `cols`, dentro del
+  bloque "1. Estado". Los dos arrays van emparejados por índice: añadir al
+  final es obligatorio para que ningún estado existente cambie de color.
+
+Sigue prohibido reordenar `order` o `cols`, cambiar cualquiera de los seis
+colores que ya están, y tocar los bloques "2. Proveedores" y "3. Meses" de
+`renderCharts`, además de todo lo demás de la lista protegida.

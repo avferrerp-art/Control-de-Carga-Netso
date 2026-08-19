@@ -1303,6 +1303,7 @@
     const ESTADO_LABEL = {
       produccion: "En producción", camino: "En camino", nacion: "Proc. Nacionalización",
       recibido: "Recibido", indef: "Indefinido", na: "Sin estado",
+      espera: "En espera de despacho", cotizacion: "En cotización",
     };
 
     /* ====== ESTADO GLOBAL ====== */
@@ -2087,9 +2088,9 @@
 
     function renderCharts(rows) {
       // 1. Estado
-      const order = ["recibido", "camino", "nacion", "produccion", "indef", "na"];
+      const order = ["recibido", "camino", "nacion", "produccion", "indef", "na", "espera", "cotizacion"];
       const counts = order.map(k => rows.filter(r => r.estado === k).length);
-      const cols = ["#16a34a", "#2563eb", "#6366f1", "#f59e0b", "#dc2626", "#94a3b8"];
+      const cols = ["#16a34a", "#2563eb", "#6366f1", "#f59e0b", "#dc2626", "#94a3b8", "#c2410c", "#475569"];
       const keep = order.map((k, i) => i).filter(i => counts[i] > 0);
       if (charts.estado) charts.estado.destroy();
       charts.estado = new Chart(document.getElementById("chartEstado"), {
