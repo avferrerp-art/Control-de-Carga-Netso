@@ -951,8 +951,8 @@
             id="fSearch" placeholder="Escribe para filtrar…" /></div>
         <span class="clear" id="clearFilters">Limpiar filtros</span>
         <div style="flex-basis:100%;font-size:12px;color:var(--muted);margin-top:2px">
-          En Estado, Proveedor y Agente puedes elegir varios manteniendo pulsado
-          <b>Cmd</b> (o <b>Ctrl</b>). Sin nada seleccionado se muestran todos.
+          Haz clic en cada uno para elegir varios a la vez, y vuelve a hacer clic
+          para quitarlo. Sin nada seleccionado se muestran todos.
         </div>
       </div>
     </div>
@@ -2477,6 +2477,22 @@
     document.getElementById("btnUpload").onclick = () => document.getElementById("fileInput").click();
     document.getElementById("fileInput").onchange = e => { if (e.target.files[0]) loadFile(e.target.files[0]); };
     ["fEstado", "fProv", "fAgente"].forEach(id => document.getElementById(id).onchange = () => { OPEN_ROW = null; renderAll(); });
+    /* Selección múltiple con un clic simple, sin Cmd ni Ctrl.
+       Por defecto el navegador sustituye la selección al hacer clic y
+       obliga a mantener una tecla para acumular. Aquí se intercepta el
+       mousedown para alternar cada opción por separado.
+       El listener va sobre el <select>, no sobre las <option>: así
+       sobrevive a que refreshOptions reconstruya la lista entera. */
+    ["fEstado", "fProv", "fAgente"].forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      sel.addEventListener("mousedown", e => {
+        if (e.target.tagName !== "OPTION") return;
+        e.preventDefault();
+        e.target.selected = !e.target.selected;
+        sel.dispatchEvent(new Event("change"));
+      });
+    });
     document.getElementById("fSearch").oninput = () => { OPEN_ROW = null; renderTable(applyFilters(ROWS)); };
     document.getElementById("clearFilters").onclick = () => {
       ["fEstado", "fProv", "fAgente"].forEach(id => {
