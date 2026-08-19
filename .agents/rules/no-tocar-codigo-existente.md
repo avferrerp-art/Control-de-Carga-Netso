@@ -170,5 +170,23 @@ sí lo tiene.
 Sigue prohibido tocar la lógica de `stages`, `missing` y `sem` de
 `normalize`, y el resto de `detailHTML`.
 
+## Excepción autorizada · 2026-08-19 · filtros múltiples
+
+Se autoriza modificar estas cuatro funciones protegidas, y solo para esto:
+
+- `filters`: devolver un array por cada filtro en vez de un valor único,
+  leyendo las opciones seleccionadas de un desplegable múltiple.
+- `applyFilters`: comparar contra esos arrays, y aceptar un segundo
+  parámetro opcional `ignorarPipe` que omite el filtro del pipeline.
+- `fillSelect` y `refreshOptions`: rellenar desplegables múltiples
+  conservando la selección, y sin opción "Todos".
+
+Se autoriza además modificar el HTML de los tres desplegables de filtro,
+añadir reglas CSS para `select[multiple]`, y cambiar el manejador de
+"Limpiar filtros" para deseleccionar en vez de vaciar.
+
+Sigue prohibido tocar `normalize`, `renderTable`, `renderKPIs`,
+`renderPipe`, `renderCharts`, `detailHTML` y `timelineHTML`.
+
 Cualquier otra modificación a la lista de funciones y constantes protegidas
 sigue prohibida. Si una tarea parece exigirla, detente y pregunta.
