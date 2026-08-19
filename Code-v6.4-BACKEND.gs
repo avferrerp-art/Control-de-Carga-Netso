@@ -1,14 +1,25 @@
 /* ============================================================
-   BACKEND · Control de Cargas Netso · HOJA REAL (produccion)
+   BACKEND · Control de Cargas Netso · v6.4
+
+   COPIA VERSIONADA. Este archivo NO se ejecuta desde aquí: es el
+   respaldo del código que corre en Google Apps Script. Sirve para
+   recuperarlo si se pierde el acceso al editor, y para poder ver el
+   historial de cambios del backend en git.
 
    Acciones: subirDoc · guardarDatosPI · guardarNumeroDoc ·
              cambiarEstado · crearCarga · agregarPago ·
              crearPendiente · saldarPendiente · borrarPendiente · leer
 
-   CONFIG — edita estas 3 líneas antes de desplegar
-   ============================================================ */
-const TOKEN      = "netso-prod-4t9w2k7m3x8q";
-const FOLDER_ID  = "1M_EZcU-hFNmjfC6xQAjehEcnNS7CuH-F";
+   ------------------------------------------------------------
+   ANTES DE PEGARLO EN APPS SCRIPT, rellena estas tres líneas.
+   Los valores reales de cada entorno están en CONTINUAR-PROYECTO.md,
+   que vive FUERA de este repositorio porque el repo es publico.
+
+   Produccion -> hoja "Control de Carga 2 Netso"
+   Pruebas    -> hoja "Control de Cargas COPIA"
+   ------------------------------------------------------------ */
+const TOKEN      = "PEGA_AQUI_EL_TOKEN";
+const FOLDER_ID  = "PEGA_AQUI_EL_ID_DE_LA_CARPETA_DE_DRIVE";
 const DRY_RUN    = false;          // true = simula, no escribe nada
 
 const SHEET_NAME  = "CONTROL DE CARGAS";
