@@ -2211,10 +2211,13 @@
 
     function renderAll() {
       refreshOptions();          // ← faltaba: sin esto los desplegables quedan vacíos
-      renderKPIs(ROWS);
-      renderPipe(ROWS);
-      renderCharts(ROWS);
-      renderTable(applyFilters(ROWS));
+      const visibles = applyFilters(ROWS);
+      renderKPIs(visibles);
+      // El pipeline recibe su propio filtrado sin el filtro de etapa (PIPE_FILTER),
+      // para que al hacer clic en una casilla no se filtre a sí misma y marque cero.
+      renderPipe(applyFilters(ROWS, true));
+      renderCharts(visibles);
+      renderTable(visibles);
       renderAlerts();
     }
 
