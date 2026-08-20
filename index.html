@@ -1101,7 +1101,8 @@
         </div>
         <div class="fld" style="margin-bottom:16px">
           <label for="piTerminos">Términos de crédito</label>
-          <input type="text" id="piTerminos" />
+          <select id="piTerminos" style="margin-bottom:8px"></select>
+          <input type="text" id="piTermOtro" placeholder="Escribe los términos de crédito" style="display:none" />
         </div>
         <div class="fld" style="margin-bottom:16px">
           <label for="piComprobante">Añadir comprobante</label>
@@ -1305,6 +1306,15 @@
       recibido: "Recibido", indef: "Indefinido", na: "Sin estado",
       espera: "En espera de despacho", cotizacion: "En cotización",
     };
+
+    /* Términos de crédito que ofrece el formulario del PI. La hoja acepta
+       cualquier texto en la columna 'Terminos de credito': esta lista es
+       una ayuda para no escribir variantes del mismo término, no una
+       validación. Para añadir uno nuevo basta con añadirlo aquí. */
+    const TERMINOS_CREDITO = [
+      "SMC-20/150DPT", "SMC-10/150DPT", "SNT-30/40BL/60D", "JL-100BL",
+      "GL-30/120DPT", "NC-30/70BL", "YS-30/70BL",
+    ];
 
     /* ====== ESTADO GLOBAL ====== */
     let ROWS = [];
@@ -2668,6 +2678,28 @@
       }
       modal.style.display = "flex";
     }
+    /* Rellena el desplegable de términos de crédito. La primera opción va
+       vacía a propósito: una carga sin términos no debe abrir con el primero
+       de la lista preseleccionado, porque al guardar cualquier otro dato se
+       le escribiría un término que nadie acordó. Si la hoja tiene un valor
+       que no está en la lista, se elige "Otro" y se muestra tal cual, para
+       no perderlo. */
+    function pintarTerminos(valor) {
+      const sel = document.getElementById("piTerminos");
+      const otro = document.getElementById("piTermOtro");
+      sel.innerHTML = `<option value="">— sin especificar —</option>`
+        + TERMINOS_CREDITO.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join("")
+        + `<option value="Otro">Otro</option>`;
+      const v = valor || "";
+      if (v && TERMINOS_CREDITO.indexOf(v) !== -1) {
+        sel.value = v; otro.value = "";
+      } else if (v) {
+        sel.value = "Otro"; otro.value = v;
+      } else {
+        sel.value = ""; otro.value = "";
+      }
+      otro.style.display = sel.value === "Otro" ? "block" : "none";
+    }
     function abrirEditarPI(id) {
       const modal = document.getElementById("uploadModal");
       const r = ROWS.find(x => x.id === id);
@@ -2727,7 +2759,7 @@
       document.getElementById("piProvOtro").style.display = selProv.value === "Otro" ? "block" : "none";
       document.getElementById("piProvOtro").value = selProv.value === "Otro" && r.prov ? r.prov : "";
 
-      document.getElementById("piTerminos").value = r.terminos || "";
+      pintarTerminos(r.termCredito);
       document.getElementById("piObs").value = r.obs || "";
 
       if (r.fechaPago) {
@@ -2880,7 +2912,7 @@
               document.getElementById("piAnticipoVal").value = "";
               document.getElementById("piAnticipoTipo").value = "%";
               document.getElementById("piResumen").textContent = "";
-              document.getElementById("piTerminos").value = "";
+              pintarTerminos(rowData?.termCredito);
               document.getElementById("piComprobante").value = "";
               document.getElementById("piFechaPago").value = new Date().toISOString().split('T')[0];
               document.getElementById("piObs").value = "";
@@ -2918,6 +2950,10 @@
 
     document.getElementById("piProvSel").onchange = e => {
       document.getElementById("piProvOtro").style.display = e.target.value === "Otro" ? "block" : "none";
+    };
+
+    document.getElementById("piTerminos").onchange = e => {
+      document.getElementById("piTermOtro").style.display = e.target.value === "Otro" ? "block" : "none";
     };
 
     function recalcPI() {
@@ -2974,7 +3010,9 @@
 
       const modal = document.getElementById("uploadModal");
       const id = modal.dataset.rid;
-      const terminos = document.getElementById("piTerminos").value.trim();
+      const termSel = document.getElementById("piTerminos").value;
+      const termOtro = document.getElementById("piTermOtro").value.trim();
+      const terminos = termSel === "Otro" ? termOtro : termSel;
 
       let anticipoPct;
       if (!isNaN(antVal) && antVal > 0) {
