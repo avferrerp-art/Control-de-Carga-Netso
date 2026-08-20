@@ -270,3 +270,23 @@ backend de Apps Script: si el texto tiene punto Y coma, el ÚLTIMO de los
 dos es el separador decimal; si solo tiene uno, tres dígitos detrás
 significa que era separador de miles. El dashboard y el backend tienen que
 interpretar los montos igual.
+
+## Excepción autorizada · 2026-08-20 · ID de la hoja en la tabla
+
+La primera columna de la tabla muestra `r.i`, que es la posición de la fila
+dentro de lo que se cargó (`out.length + 1`), no un identificador. Con un
+filtro activo en la hoja ese número no corresponde a nada. El `ID` de la
+columna A (`C-001`) sí es estable y es el que usa todo el backend.
+
+Se autoriza modificar `renderTable`, y solo esto: sustituir el `${r.i}`
+que se muestra dentro del primer `<td>` por el ID de la carga, con el
+número como respaldo si el ID estuviera vacío.
+
+Se autoriza cambiar el `<th>#</th>` de la cabecera por `<th>ID</th>`.
+
+Sigue PROHIBIDO tocar el atributo `data-i="${r.i}"` del `<tr>`, y el
+manejador `tr.onclick` que lee `+tr.dataset.i`. Ese valor es la llave
+numérica con la que se despliega la fila y con la que `OPEN_ROW` se
+compara en el resto del archivo; cambiarlo al ID lo convertiría en NaN y
+las filas dejarían de abrirse. Tampoco se toca el `<span class="flag">`,
+ni el resto de celdas, ni `normalize`.

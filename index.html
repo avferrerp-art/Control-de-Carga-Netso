@@ -503,6 +503,16 @@
       font-variant-numeric: tabular-nums
     }
 
+    /* El ID de la carga lleva guion (C-001) y el navegador lo parte en dos
+       líneas. Esta celda no se parte nunca, así que la columna se ensancha
+       sola lo justo. Va acotada a tr.row a propósito: la fila del detalle
+       desplegado también empieza por un <td> y un selector genérico le
+       metería nowrap al panel entero. */
+    .tbl-wrap tbody tr.row td:first-child {
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
     .st {
       display: inline-block;
       padding: 3px 10px;
@@ -996,7 +1006,7 @@
         <table>
           <thead>
             <tr>
-              <th>#</th>
+              <th>ID</th>
               <th>Proveedor</th>
               <th>PI No</th>
               <th>Ruta documental</th>
@@ -2257,7 +2267,7 @@
       tb.innerHTML = rows.map(r => {
         const open = OPEN_ROW === r.i;
         const main = `<tr class="row" data-i="${r.i}">
-      <td><span class="flag ${r.sem}"></span>${r.i}</td>
+      <td><span class="flag ${r.sem}"></span>${esc(r.id) || r.i}</td>
       <td class="id">${esc(r.prov) || "—"}</td>
       <td>${esc(r.stages.pi.label) || "—"}</td>
       <td>${trackHTML(r)}</td>
