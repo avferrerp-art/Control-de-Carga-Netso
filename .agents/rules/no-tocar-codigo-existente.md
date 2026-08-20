@@ -290,3 +290,24 @@ numérica con la que se despliega la fila y con la que `OPEN_ROW` se
 compara en el resto del archivo; cambiarlo al ID lo convertiría en NaN y
 las filas dejarían de abrirse. Tampoco se toca el `<span class="flag">`,
 ni el resto de celdas, ni `normalize`.
+
+## Excepción autorizada · 2026-08-20 · Subtotal y Flete en el detalle
+
+El panel de detalle muestra `Total`, que en la hoja es la fórmula
+`=Subtotal+Flete`, pero no muestra ninguno de sus dos sumandos. `Subtotal`
+ya lo lee `normalize`; `Flete` no se lee en ninguna parte del frontend.
+
+Se autoriza:
+
+- `normalize`: añadir `flete: find(["Flete"])` al objeto `col`, y
+  `flete: get(r, col.flete)` al objeto de cada fila. Nada más. No se toca
+  la lógica de `stages`, `missing` ni `sem`, ni ningún campo existente.
+- `detailHTML`: añadir dos líneas `kv` —`Subtotal` y `Flete`—
+  inmediatamente ANTES de la línea `${kv("Total", esc(r.total))}` que ya
+  existe, con la misma forma que las demás.
+
+Sigue prohibido tocar el resto de `detailHTML` (el bloque `estCtrl`, el
+condicional de `r.tienePlanPagos`, las listas de pendientes y
+comprobantes), `timelineHTML`, `renderTable`, y el resto de `normalize`.
+
+No se añaden columnas a la hoja: `Subtotal` y `Flete` ya existen.

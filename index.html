@@ -1499,6 +1499,7 @@
         agente: find(["Agente aduanal", "Agente Aduanal", "Agente"]),
         id: find(["ID"]),
         subtotal: find(["Subtotal"]),
+        flete: find(["Flete"]),
         total: find(["Total"]),
         anticipoPct: find(["Anticipo (%)", "Anticipo", "Anticipo %"]),
         totalAnticipo: find(["Total Anticipo"]),
@@ -1582,6 +1583,7 @@
           id: get(r, col.id),   // identificador estable de la Fase 0
           stages,
           subtotal: get(r, col.subtotal),
+          flete: get(r, col.flete),
           total: get(r, col.total),
           anticipoPct: get(r, col.anticipoPct),
           totalAnticipo: get(r, col.totalAnticipo),
@@ -2041,6 +2043,8 @@
         ? `<a href="${esc(r.contUrl)}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">${esc(r.cont)} ↗</a>`
         : esc(r.cont))}
       ${kv("Agente aduanal", esc(r.agente))}
+      ${kv("Subtotal", esc(r.subtotal))}
+      ${kv("Flete", esc(r.flete))}
       ${kv("Total", esc(r.total))}
       ${r.tienePlanPagos
           ? kv("Pagado", esc(r.pagado)) + kv("Programado", esc(r.programado)) + kv("Sin programar", esc(r.sinProgramar))
