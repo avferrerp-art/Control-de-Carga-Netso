@@ -212,3 +212,61 @@ Se autoriza, y solo para tapar ese hueco:
 Sigue prohibido reordenar `order` o `cols`, cambiar cualquiera de los seis
 colores que ya están, y tocar los bloques "2. Proveedores" y "3. Meses" de
 `renderCharts`, además de todo lo demás de la lista protegida.
+
+## Excepción autorizada · 2026-08-20 · aviso de filas ocultas
+
+El backend ya devuelve un campo `ocultas` con el número de filas que saltó
+por estar escondidas en la hoja, sea por un filtro o a mano. El frontend
+nunca lo lee. Consecuencia: si alguien deja un filtro puesto en Google
+Sheets, el tablero muestra menos cargas de las que hay y no lo dice — los
+KPIs, el pipeline y las gráficas reportan de menos en silencio.
+
+Se autoriza añadir **una sola línea** dentro de `loadLive()`, en la función
+interna `fetchApi`, justo después de la llamada existente a
+`asignarPendientes(...)`, que anteponga un aviso a `DATA_ALERTS` cuando
+`data.ocultas` sea mayor que cero.
+
+Va antes que los demás avisos a propósito: es el único que dice que los
+números que se están viendo están incompletos.
+
+Sigue prohibido tocar el resto de `loadLive`, el cuerpo de `fetchApi` por
+lo demás, `fetchSheet`, `updateRows`, `normalize`, `renderAlerts` y el
+bloque de error posterior.
+
+## Excepción autorizada · 2026-08-20 · montos en los tooltips
+
+Las gráficas siguen midiendo CANTIDAD DE CARGAS. No cambia ni un color, ni
+un eje, ni un título, ni el tipo de gráfica. Lo único que cambia es lo que
+dice el globito al pasar el ratón: además de las cargas, muestra la suma de
+la columna `Total` de esa categoría, y cuántas de esas cargas todavía no
+tienen monto cargado.
+
+Ese último dato no es opcional. Hoy 13 de 88 cargas tienen `Total` a
+`$0,00` porque su `Subtotal` y su `Flete` están vacíos: no valen cero, es
+que no se sabe cuánto valen. Sumarlas como cero sin decirlo convertiría el
+tooltip en un número falso. Se reporta la anomalía, no se corrige — igual
+que con las fechas 31/10/1899 y las cargas sin Status.
+
+Se autoriza modificar `renderCharts`, y solo así:
+
+- En los bloques "1. Estado", "2. Proveedores" y "3. Evolución mensual":
+  calcular, junto a los conteos que ya se calculan, la suma de montos por
+  categoría y el número de cargas con monto cero, usando la función nueva
+  `montoANumero`.
+- En esos mismos tres bloques: añadir un `tooltip` con su `callbacks.label`
+  dentro del `plugins` que ya existe en `options`.
+
+Sigue prohibido cambiar `type`, `data.labels`, los valores de
+`datasets[].data`, `backgroundColor`, `borderRadius`, `scales`, `cutout`,
+`indexAxis` y la configuración de `legend`. El bloque "4. Completitud" no
+se toca en absoluto. El orden del top 10 de proveedores se sigue
+calculando por cantidad de cargas, nunca por monto.
+
+Las funciones auxiliares `montoANumero`, `fmtMonto` y `lineasTooltip` son
+CÓDIGO NUEVO y se añaden fuera de cualquier función protegida.
+
+`montoANumero` debe replicar exactamente la lógica de `parsearMonto` del
+backend de Apps Script: si el texto tiene punto Y coma, el ÚLTIMO de los
+dos es el separador decimal; si solo tiene uno, tres dígitos detrás
+significa que era separador de miles. El dashboard y el backend tienen que
+interpretar los montos igual.
