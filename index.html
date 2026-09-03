@@ -1937,10 +1937,22 @@
         });
         const data = await res.json();
         if (data.ok) {
-          /* Se relee de la hoja para que el monto aparezca con el formato
-             de la columna y no como número crudo. */
-          await refrescarDesdeBackend();
+          /* Construir el pendiente en memoria para no releer la hoja entera */
+          const nuevoPend = {
+            idPendiente: data.idPendiente,
+            id: id,
+            fecha: fecha,
+            monto: fmtMonto(data.monto),
+            concepto: concepto,
+            estado: "pendiente",
+            fechaPago: ""
+          };
           const r = ROWS.find(x => x.id === id);
+          if (r) {
+            if (!r.pendientes) r.pendientes = [];
+            r.pendientes.push(nuevoPend);
+            r.tienePlanPagos = true;
+          }
           pintarPendientesModal(r ? r.pendientes : []);
           avisoPendiente("Pago pendiente añadido.", false);
         } else {
