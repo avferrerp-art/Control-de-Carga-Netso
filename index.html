@@ -1937,10 +1937,22 @@
         });
         const data = await res.json();
         if (data.ok) {
-          /* Se relee de la hoja para que el monto aparezca con el formato
-             de la columna y no como número crudo. */
-          await refrescarDesdeBackend();
+          /* Construir el pendiente en memoria para no releer la hoja entera */
+          const nuevoPend = {
+            idPendiente: data.idPendiente,
+            id: id,
+            fecha: fecha,
+            monto: fmtMonto(data.monto),
+            concepto: concepto,
+            estado: "pendiente",
+            fechaPago: ""
+          };
           const r = ROWS.find(x => x.id === id);
+          if (r) {
+            if (!r.pendientes) r.pendientes = [];
+            r.pendientes.push(nuevoPend);
+            r.tienePlanPagos = true;
+          }
           pintarPendientesModal(r ? r.pendientes : []);
           avisoPendiente("Pago pendiente añadido.", false);
         } else {
@@ -1972,8 +1984,31 @@
         });
         const data = await res.json();
         if (data.ok) {
-          await refrescarDesdeBackend();
           const r = ROWS.find(x => x.id === id);
+          if (r && r.pendientes) {
+            const idx = r.pendientes.findIndex(x => x.idPendiente === idPendiente);
+            if (idx !== -1) {
+              const pend = r.pendientes[idx];
+              const n   = montoANumero(pend.monto);
+              const totalNum = montoANumero(r.total);
+              let pagado     = montoANumero(r.pagado);
+              let programado = montoANumero(r.programado);
+              if (accion === "saldarPendiente") {
+                /* pasa de programado a pagado */
+                programado -= n;
+                pagado     += n;
+              } else if (accion === "borrarPendiente") {
+                /* sale de programado o pagado según su estado */
+                const est = String(pend.estado || "").toLowerCase();
+                if (est === "pendiente") programado -= n;
+                else if (est === "pagado") pagado   -= n;
+              }
+              r.pagado      = fmtMonto(pagado);
+              r.programado  = fmtMonto(programado);
+              r.sinProgramar = totalNum === 0 ? "" : fmtMonto(totalNum - pagado - programado);
+              r.pendientes.splice(idx, 1);
+            }
+          }
           pintarPendientesModal(r ? r.pendientes : []);
           avisoPendiente(exito, false);
         } else {
@@ -2144,6 +2179,24 @@
     function fmtMonto(n) {
       return "$" + Number(n || 0).toLocaleString("es-ES",
         { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    /* Recalcula Pagado / Programado / Sin programar en memoria, con las
+       mismas reglas que las fórmulas de la hoja, para no releerla. */
+    function recalcularImportesPend(r) {
+      if (!r) return;
+      const lista = r.pendientes || [];
+      let pagado = 0, programado = 0;
+      lista.forEach(function (p) {
+        const est = String(p.estado || "").toLowerCase();
+        const n   = montoANumero(p.monto);
+        if (est === "pagado")    pagado     += n;
+        else if (est === "pendiente") programado += n;
+      });
+      const total = montoANumero(r.total);
+      r.pagado      = fmtMonto(pagado);
+      r.programado  = fmtMonto(programado);
+      r.sinProgramar = total === 0 ? "" : fmtMonto(total - pagado - programado);
     }
 
     /* Las líneas del globito: cargas, suma de montos, y —solo si las hay—
