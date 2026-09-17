@@ -1281,6 +1281,7 @@
       "38e4b5695154ceaf20d928f293f72d6ae6cab84fa45b01033f88b790c1eb3a03",
       "2d1a243cdba7415781833393ada2338fb78b77a3c24a20a70e0f89e42c0e4b2d",
       "e0b399df971a591b5a5d96f0ca51233d4ab3c72d9d4dfa1030ab0a9a120cabed",
+      "ea8c9ff30a389a0bccd94cd896bae3416e23dc1695b38b6b883b258941bd6142",
     ];
 
     /* Calcula la huella SHA-256 de un texto usando Web Crypto API.
@@ -2547,6 +2548,7 @@
               const rows = normalize(data.matriz, data.links);
               asignarPagos(data.pagos, rows);
               asignarPendientes(data.pendientes, rows);
+              if (data.ocultas > 0) DATA_ALERTS.unshift(`<b>${data.ocultas}</b> filas de la hoja están <b>ocultas</b> (por un filtro o escondidas a mano) y no se están contando. Los KPIs, el pipeline y las gráficas muestran menos de lo que hay. Quita el filtro en Google Sheets para verlas.`);
               if (rows.length) {
                 apiYaPinto = true;
                 updateRows(rows);
@@ -2627,6 +2629,7 @@
             const rows = normalize(data.matriz, data.links);
             asignarPagos(data.pagos, rows);
             asignarPendientes(data.pendientes, rows);
+            if (data.ocultas > 0) DATA_ALERTS.unshift(`<b>${data.ocultas}</b> filas de la hoja están <b>ocultas</b> (por un filtro o escondidas a mano) y no se están contando. Los KPIs, el pipeline y las gráficas muestran menos de lo que hay. Quita el filtro en Google Sheets para verlas.`);
             if (rows.length) {
               const oldOpen = OPEN_ROW;
               ROWS = rows;
