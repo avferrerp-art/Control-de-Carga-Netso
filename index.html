@@ -883,10 +883,13 @@
         grid-template-columns: repeat(4, 1fr)
       }
     }
+
+    /* Bloqueo: oculta todo excepto el panel de acceso mientras no haya sesión autorizada */
+    body.bloqueado .wrap > *:not(#authPanel) { display: none; }
   </style>
 </head>
 
-<body>
+<body class="bloqueado">
   <div class="wrap">
 
     <!-- ENTRADA (provisional: solo muestra el boton y el correo) -->
@@ -2736,6 +2739,7 @@
         /* Correo autorizado: oculta el panel de acceso y arranca el tablero */
         document.getElementById("authPanel").style.display = "none";
         el.style.display = "none";
+        document.body.classList.remove("bloqueado");
         loadLive();
       } else {
         /* Correo NO autorizado: muestra aviso y no carga datos */
