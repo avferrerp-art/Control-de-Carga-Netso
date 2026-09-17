@@ -886,18 +886,56 @@
 
     /* Bloqueo: oculta todo excepto el panel de acceso mientras no haya sesión autorizada */
     body.bloqueado .wrap > *:not(#authPanel) { display: none; }
+
+    body.bloqueado .wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px
+    }
+
+    body.bloqueado #authPanel {
+      width: 100%;
+      max-width: 400px;
+      margin: 0;
+      padding: 34px 32px 30px;
+      text-align: center
+    }
+
+    #authPanel .netso-logo { height: 44px; margin: 0 auto }
+
+    #authPanel .auth-title { font-size: 21px; font-weight: 800; margin: 18px 0 4px }
+
+    #authPanel .auth-sub { color: var(--muted); font-size: 13.5px; margin: 0 }
+
+    #authPanel .auth-div { border: 0; border-top: 1px solid var(--line); margin: 22px 0 }
+
+    #authPanel .auth-msg {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+      margin: 0 0 20px
+    }
+
+    #authPanel #googleBtn { display: flex; justify-content: center }
+
+    #authPanel #authInfo { text-align: left }
   </style>
 </head>
 
 <body class="bloqueado">
   <div class="wrap">
 
-    <!-- ENTRADA (provisional: solo muestra el boton y el correo) -->
-    <div class="panel" id="authPanel" style="margin-bottom:18px">
-      <h3>Acceso</h3>
-      <p class="p-sub">Inicia sesión con tu cuenta de Google.</p>
-      <div id="googleBtn" style="margin-top:10px"></div>
-      <div id="authInfo" style="display:none;margin-top:10px;font-size:13px;color:var(--muted)"></div>
+    <!-- ENTRADA -->
+    <div class="panel" id="authPanel">
+      <div class="logo"><img class="netso-logo" src="netso-logo.png" alt="Netso" /></div>
+      <h2 class="auth-title">Control de Cargas y Compras</h2>
+      <p class="auth-sub">Seguimiento documental de importaciones</p>
+      <hr class="auth-div" />
+      <p class="auth-msg">Panel interno de Netso.<br />Inicia sesión con tu cuenta autorizada.</p>
+      <div id="googleBtn"></div>
+      <div class="banner err" id="authInfo"></div>
     </div>
 
     <!-- HEADER -->
@@ -2743,7 +2781,7 @@
         loadLive();
       } else {
         /* Correo NO autorizado: muestra aviso y no carga datos */
-        el.innerHTML = '<span style="color:var(--red)">⛔ Este correo no tiene acceso al panel. Contacta a Netso si crees que es un error.</span>';
+        el.textContent = "Este correo no tiene acceso al panel. Contacta a Netso si crees que es un error.";
         el.style.display = "block";
       }
     }
@@ -2761,7 +2799,7 @@
       });
       google.accounts.id.renderButton(
         document.getElementById("googleBtn"),
-        { theme: "outline", size: "large", text: "signin_with", locale: "es" }
+        { theme: "outline", size: "large", text: "signin_with", locale: "es", width: 300 }
       );
     }
 

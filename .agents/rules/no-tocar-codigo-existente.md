@@ -107,10 +107,14 @@ nunca lo lee. Consecuencia: si alguien deja un filtro puesto en Google
 Sheets, el tablero muestra menos cargas de las que hay y no lo dice — los
 KPIs, el pipeline y las gráficas reportan de menos en silencio.
 
-Se autoriza añadir **una sola línea** dentro de `loadLive()`, en la función
-interna `fetchApi`, justo después de la llamada existente a
-`asignarPendientes(...)`, que anteponga un aviso a `DATA_ALERTS` cuando
-`data.ocultas` sea mayor que cero.
+Se autoriza añadir **una línea** justo después de cada una de las dos
+llamadas existentes a `asignarPendientes(...)`: la de `fetchApi`, dentro de
+`loadLive()`, y la de `refrescarDesdeBackend()`. Esa línea antepone un aviso
+a `DATA_ALERTS` cuando `data.ocultas` sea mayor que cero.
+
+Son dos sitios y no uno porque `normalize` vacía `DATA_ALERTS` cada vez que
+corre: si el aviso solo estuviera en `fetchApi`, desaparecería en silencio
+después de cualquier guardado, que es justo cuando más falta hace.
 
 Va antes que los demás avisos a propósito: es el único que dice que los
 números que se están viendo están incompletos.
