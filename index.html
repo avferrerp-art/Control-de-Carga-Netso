@@ -7,6 +7,7 @@
   <title>Control de Cargas y Compras · Netso</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     :root {
       --green: #16a34a;
@@ -888,6 +889,14 @@
 <body>
   <div class="wrap">
 
+    <!-- ENTRADA (provisional: solo muestra el boton y el correo) -->
+    <div class="panel" id="authPanel" style="margin-bottom:18px">
+      <h3>Acceso</h3>
+      <p class="p-sub">Inicia sesión con tu cuenta de Google.</p>
+      <div id="googleBtn" style="margin-top:10px"></div>
+      <div id="authInfo" style="display:none;margin-top:10px;font-size:13px;color:var(--muted)"></div>
+    </div>
+
     <!-- HEADER -->
     <div class="head-outer">
       <div class="actions">
@@ -1215,6 +1224,11 @@
         url: "https://script.google.com/macros/s/AKfycbxunQr7hdyv2-pU95MeQl5ZsnlGJtlpbNa8Zqc7XxkAO_USJ5SjN3XUMLHgHRarnCK1jg/exec",
       },
     };
+
+    /* Identificador público de la aplicación ante Google. No es un secreto:
+       está pensado para ir en el código del navegador, y sin los orígenes
+       autorizados que tiene registrados no le sirve a nadie. */
+    const GOOGLE_CLIENT_ID = "751712898321-pqm8hr7pnd9r4pfspj5edr2l3ndol8uh.apps.googleusercontent.com";
 
     /* Lista blanca a propósito: solo estos dominios son producción.
        Todo lo demás cae en pruebas, que es el lado seguro del error. */
@@ -2679,6 +2693,47 @@
         }).join("");
       }
     })();
+
+    /* Lee el contenido del identificador que firma Google. Solo se decodifica
+       para mostrarlo; NO se verifica la firma. Esta pantalla es disuasión,
+       no seguridad: quien lea el código fuente puede saltársela. La
+       verificación de verdad va en el backend, en una fase posterior. */
+    function decodeJwtPayload(jwt) {
+      const b64 = jwt.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      const json = decodeURIComponent(atob(b64).split("").map(function (c) {
+        return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(""));
+      return JSON.parse(json);
+    }
+
+    function onGoogleCredential(resp) {
+      const datos = decodeJwtPayload(resp.credential);
+      console.log("GOOGLE · correo:", datos.email,
+                  "· nombre:", datos.name,
+                  "· verificado:", datos.email_verified);
+      const el = document.getElementById("authInfo");
+      el.textContent = "Sesión iniciada como " + datos.email;
+      el.style.display = "block";
+    }
+
+    /* El script de Google se carga con async, así que puede no estar listo
+       cuando llega aquí. Se reintenta hasta que aparezca. */
+    function iniciarGoogleSignIn() {
+      if (!window.google || !google.accounts || !google.accounts.id) {
+        setTimeout(iniciarGoogleSignIn, 200);
+        return;
+      }
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: onGoogleCredential,
+      });
+      google.accounts.id.renderButton(
+        document.getElementById("googleBtn"),
+        { theme: "outline", size: "large", text: "signin_with", locale: "es" }
+      );
+    }
+
+    iniciarGoogleSignIn();
 
     loadLive();
 
