@@ -311,3 +311,32 @@ condicional de `r.tienePlanPagos`, las listas de pendientes y
 comprobantes), `timelineHTML`, `renderTable`, y el resto de `normalize`.
 
 No se añaden columnas a la hoja: `Subtotal` y `Flete` ya existen.
+
+## Excepción autorizada · 2026-09-17 · pantalla de entrada con Google
+
+El dashboard no tiene ninguna protección: el enlace es público y el token
+viaja en el propio `index.html`. Esta excepción cubre un primer nivel de
+control de acceso, que es DISUASIÓN, no seguridad: filtra a quien reciba el
+enlace por error, pero no a quien lea el código fuente. El backend sigue
+aceptando cualquier petición con el token. Eso se resolverá aparte.
+
+Se autoriza, y solo para esto:
+
+- Añadir UN script externo nuevo en el `<head>`: el cliente de Google
+  Identity Services, `https://accounts.google.com/gsi/client`. Es la única
+  excepción a la prohibición de CDNs nuevos, y solo para ese dominio.
+- Añadir una constante nueva con las HUELLAS SHA-256 de los correos
+  autorizados, y funciones nuevas para la pantalla de entrada.
+- Sustituir la llamada suelta `loadLive();` del arranque por una llamada a
+  la función nueva del portón, que decide si carga o no.
+
+REGLA CRÍTICA sobre las huellas: la constante contiene huellas y NADA MÁS.
+Está prohibido escribir el correo al lado de su huella, ni en un
+comentario, ni en el nombre de una variable, ni en ningún otro sitio del
+archivo. El `index.html` es público; poner la leyenda anularía el motivo de
+usar huellas.
+
+Sigue prohibido: `localStorage` y `sessionStorage` — Google mantiene la
+sesión de su lado y aquí no se guarda nada. Tocar `loadLive`, `normalize`,
+`renderTable`, `detailHTML` y el resto de la lista protegida. Añadir
+cualquier otro CDN. Y tocar `BACKENDS` o el token.
