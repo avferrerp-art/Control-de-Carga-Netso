@@ -1164,6 +1164,34 @@
           <select id="piTerminos" style="margin-bottom:8px"></select>
           <input type="text" id="piTermOtro" placeholder="Escribe los términos de crédito" style="display:none" />
         </div>
+        <div style="border-top:1px solid var(--line);margin:22px 0 14px"></div>
+        <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:12px;letter-spacing:.3px">
+          DATOS LOGÍSTICOS</div>
+
+        <div class="fld" style="margin-bottom:16px">
+          <label for="piEtd">ETD (zarpe)</label>
+          <input type="date" id="piEtd" />
+          <div id="piEtdActual" style="font-size:12px;color:var(--muted);margin-top:4px;display:none;"></div>
+        </div>
+
+        <div class="fld" style="margin-bottom:16px">
+          <label for="piEta">ETA (arribo)</label>
+          <input type="date" id="piEta" />
+          <div id="piEtaActual" style="font-size:12px;color:var(--muted);margin-top:4px;display:none;"></div>
+        </div>
+
+        <div class="fld" style="margin-bottom:16px">
+          <label for="piContenedor">Contenedor</label>
+          <input type="text" id="piContenedor" placeholder="Dejar vacío para no cambiar" />
+          <div id="piContenedorActual" style="font-size:12px;color:var(--muted);margin-top:4px;display:none;"></div>
+        </div>
+
+        <div class="fld" style="margin-bottom:16px">
+          <label for="piAgenteSel">Agente aduanal</label>
+          <select id="piAgenteSel" style="margin-bottom:8px"></select>
+          <input type="text" id="piAgenteOtro" placeholder="Nombre del agente" style="display:none" />
+        </div>
+
         <div class="fld" style="margin-bottom:16px">
           <label for="piComprobante">Añadir comprobante</label>
           <div id="piComprobantesList" style="margin-bottom:8px;font-size:14px;"></div>
@@ -3039,6 +3067,34 @@
       document.getElementById("piProvOtro").value = selProv.value === "Otro" && r.prov ? r.prov : "";
 
       pintarTerminos(r.termCredito);
+      /* Campos logísticos: van en blanco a propósito; lo que se deja vacío
+         no se toca. Debajo se muestra el valor actual de la hoja. */
+      document.getElementById("piEtd").value = "";
+      document.getElementById("piEta").value = "";
+      document.getElementById("piContenedor").value = "";
+
+      const pintarActual = (idDiv, texto) => {
+        const el = document.getElementById(idDiv);
+        if (texto) { el.textContent = "Actual: " + texto; el.style.display = "block"; }
+        else { el.style.display = "none"; }
+      };
+      pintarActual("piEtdActual", fmtDate(r.stages.etd.date));
+      pintarActual("piEtaActual", fmtDate(r.stages.eta.date));
+      pintarActual("piContenedorActual", r.cont);
+
+      /* El agente arranca en "sin cambiar" a propósito: si arrancara en el
+         primero de la lista, guardar le asignaría un agente a una carga que
+         nunca lo tuvo. */
+      const selAg = document.getElementById("piAgenteSel");
+      const agentes = [...new Set(ROWS.map(x => x.agente))].filter(Boolean)
+        .sort((a, b) => String(a).localeCompare(String(b)));
+      selAg.innerHTML = `<option value="">— sin cambiar —</option>`
+        + agentes.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join("")
+        + `<option value="Otro">Otro</option>`;
+      selAg.value = "";
+      document.getElementById("piAgenteOtro").style.display = "none";
+      document.getElementById("piAgenteOtro").value = "";
+
       document.getElementById("piObs").value = r.obs || "";
 
       if (r.fechaPago) {
@@ -3235,6 +3291,12 @@
       document.getElementById("piTermOtro").style.display = e.target.value === "Otro" ? "block" : "none";
     };
 
+    document.getElementById("piAgenteSel").onchange = e => {
+      const otro = document.getElementById("piAgenteOtro");
+      otro.style.display = e.target.value === "Otro" ? "block" : "none";
+      if (e.target.value !== "Otro") otro.value = "";
+    };
+
     function recalcPI() {
       const sub = parseFloat(document.getElementById("piSubtotal").value);
       const antVal = parseFloat(document.getElementById("piAnticipoVal").value);
@@ -3315,12 +3377,24 @@
       const obs = document.getElementById("piObs").value.trim();
       const conceptoPago = document.getElementById("piConceptoPago").value.trim();
 
+      const etd = document.getElementById("piEtd").value;
+      const eta = document.getElementById("piEta").value;
+      const contenedor = document.getElementById("piContenedor").value.trim();
+      const agSel = document.getElementById("piAgenteSel").value;
+      const agOtro = document.getElementById("piAgenteOtro").value.trim();
+      const agente = agSel === "Otro" ? agOtro : agSel;
+
+
       const payload = { token: UPLOAD_TOKEN, accion: "guardarDatosPI", id };
       if (!isNaN(sub) && sub > 0) payload.subtotal = sub;
       if (anticipoPct !== undefined) payload.anticipoPct = anticipoPct;
       if (provFinal) payload.proveedor = provFinal;
       if (terminos) payload.terminos = terminos;
       if (obs) payload.observaciones = obs;
+      if (etd) payload.etd = etd;
+      if (eta) payload.eta = eta;
+      if (contenedor) payload.contenedor = contenedor;
+      if (agente) payload.agente = agente;
 
       const fileInput = document.getElementById("piComprobante");
       const file = fileInput.files[0];
