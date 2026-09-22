@@ -178,6 +178,31 @@ Se autoriza, y solo para esto:
 Sigue prohibido tocar cómo se pintan las etapas y sus clases CSS, el resto de
 `detailHTML`, `renderTable`, `normalize` y el resto de la lista protegida.
 
+## Excepción autorizada · 2026-09-22 · se retira "Subir Excel"
+
+La subida manual de un .xlsx era el respaldo de la época en que el dashboard
+todavía no hablaba con el backend. Hoy los datos llegan por la API, con la hoja
+publicada en HTML y en CSV como respaldo, y esa vía no se usa. Mientras tanto
+obliga a descargar `xlsx.full.min.js` —unos 900 KB, y bloqueante— en cada
+visita, aunque nadie vaya a subir nada.
+
+Se autoriza, y solo para esto:
+
+- Eliminar el script externo de `xlsx` del `<head>`.
+- Eliminar el botón `btnUpload` y el `<input type="file" id="fileInput">` del
+  HEADER, junto con las dos líneas de eventos que los conectan.
+- Eliminar completas las funciones protegidas `loadFile` y
+  `sheetToMatrixWithLinks`. Se quedan sin un solo llamador; borrarlas es más
+  seguro que dejarlas como código muerto que apunta a un botón inexistente.
+- Reescribir los tres textos que mandan al usuario a pulsar "Subir Excel": los
+  dos del bloque de error de `loadLive` y el de `loadDemo`. Solo el texto; la
+  lógica de esos bloques no se toca.
+
+Sigue prohibido tocar `normalize`, `parseCSV`, `parsePubHtml`, `renderAll`, el
+resto de `loadLive` y de `loadDemo`, y la lista protegida en general. Los dos
+respaldos de lectura que quedan —la hoja publicada en HTML y en CSV— no se
+tocan: son los que sostienen el dashboard si la API falla.
+
 ## Historial
 
 Las excepciones ya ejecutadas y en producción se movieron a
