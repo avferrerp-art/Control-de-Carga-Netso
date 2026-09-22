@@ -2818,26 +2818,33 @@
       }).then(r => (r.ok ? r.json() : null)).catch(() => null);
     }
 
-    /* Pinta con lo que trajo el prefetch. Si no trajo nada, o si pasó
-       demasiado tiempo desde que se pidió, se cae al camino de siempre. */
+    /* Pinta con lo que trajo el prefetch. Si no trajo nada, si pasó demasiado
+       tiempo desde que se pidió, o si algo falla por el camino, se cae a la
+       carga normal. El try/catch no es decorativo: sin él, cualquier error aquí
+       deja el tablero cargando para siempre, sin respaldo y sin aviso. */
     async function pintarDesdePrefetch() {
       const DEMASIADO_VIEJO = 3 * 60 * 1000;
-      let data = null;
-      if (PREFETCH && Date.now() - PREFETCH_T0 < DEMASIADO_VIEJO) {
-        try { data = await PREFETCH; } catch (e) { data = null; }
-      }
-      if (data && data.ok && data.filas) {
-        const rows = normalize(data.matriz, data.links);
-        asignarPagos(data.pagos, rows);
-        asignarPendientes(data.pendientes, rows);
-        if (data.ocultas > 0) DATA_ALERTS.unshift(`<b>${data.ocultas}</b> filas de la hoja están <b>ocultas</b> (por un filtro o escondidas a mano) y no se están contando. Los KPIs, el pipeline y las gráficas muestran menos de lo que hay. Quita el filtro en Google Sheets para verlas.`);
-        if (rows.length) {
-          ROWS = rows;
-          const conLink = ROWS.reduce((a, r) => a + STAGES.filter(s => r.stages[s.key].url).length, 0);
-          statusUI("ok", `En vivo (API) · ${ROWS.length} cargas · ${conLink} documentos con link · ${hora()}`);
-          renderAll();
-          return;
+      try {
+        let data = null;
+        if (PREFETCH && Date.now() - PREFETCH_T0 < DEMASIADO_VIEJO) {
+          data = await PREFETCH;
         }
+        if (data && data.ok && data.filas) {
+          const rows = normalize(data.matriz, data.links);
+          asignarPagos(data.pagos, rows);
+          asignarPendientes(data.pendientes, rows);
+          if (data.ocultas > 0) DATA_ALERTS.unshift(`<b>${data.ocultas}</b> filas de la hoja están <b>ocultas</b> (por un filtro o escondidas a mano) y no se están contando. Los KPIs, el pipeline y las gráficas muestran menos de lo que hay. Quita el filtro en Google Sheets para verlas.`);
+          if (rows.length) {
+            ROWS = rows;
+            const conLink = ROWS.reduce((a, r) => a + STAGES.filter(s => r.stages[s.key].url).length, 0);
+            const hhmm = new Date().toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" });
+            statusUI("ok", `En vivo (API) · ${ROWS.length} cargas · ${conLink} documentos con link · ${hhmm}`);
+            renderAll();
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("El prefetch falló, se usa la carga normal:", e && e.message);
       }
       loadLive();
     }
