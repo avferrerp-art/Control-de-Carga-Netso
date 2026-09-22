@@ -5,8 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Control de Cargas y Compras · Netso</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     :root {
@@ -942,9 +941,7 @@
     <div class="head-outer">
       <div class="actions">
         <button class="btn btn-ghost" id="btnNewCarga">+ Nueva carga</button>
-        <button class="btn btn-ghost" id="btnUpload">Subir Excel</button>
         <button class="btn btn-primary" id="btnReload">Actualizar</button>
-        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" />
       </div>
       <div class="brand">
         <div class="logo"><img class="netso-logo" src="netso-logo.png" alt="Netso" /></div>
@@ -2642,10 +2639,9 @@
           ? `<b>El navegador bloqueó la lectura en vivo.</b> Abriste el dashboard con doble clic
          (<code>file://</code>) y Chrome no deja que un archivo local pida datos a un sitio externo.
          La hoja está bien publicada; es una restricción del navegador.<br>
-         <b>Solución:</b> usa el botón <b>Subir Excel</b> de arriba — trae los mismos datos <i>y</i> los links.
-         En el Sheet: <b>Archivo → Descargar → Microsoft Excel (.xlsx)</b>.`
+         <b>Solución:</b> abre el dashboard desde su dirección web, no desde el archivo.`
           : `<b>No se pudo leer la hoja publicada.</b> ${esc(sheetResult)}. Revisa que siga publicada en
-         <b>Archivo → Compartir → Publicar en la Web</b>, o usa <b>Subir Excel</b>.`);
+         <b>Archivo → Compartir → Publicar en la Web</b>.`);
         loadDemo();
       }
     }
@@ -2676,43 +2672,7 @@
       }
     }
 
-    /* sheet_to_json descarta los hipervínculos. Recorriendo las celdas a mano
-       sí se leen: SheetJS los deja en cell.l.Target. Un .xlsx bajado de Google
-       Sheets conserva los links, así que esta ruta funciona igual que la online. */
-    function sheetToMatrixWithLinks(ws) {
-      const matrix = [], links = [];
-      if (!ws || !ws["!ref"]) return { matrix, links };
-      const R = XLSX.utils.decode_range(ws["!ref"]);
-      for (let r = R.s.r; r <= R.e.r; r++) {
-        const mrow = [], lrow = [];
-        for (let c = R.s.c; c <= R.e.c; c++) {
-          const cell = ws[XLSX.utils.encode_cell({ r, c })];
-          mrow.push(cell ? String(cell.w != null ? cell.w : (cell.v != null ? cell.v : "")).trim() : "");
-          lrow.push(cell && cell.l && cell.l.Target ? unwrapGoogle(String(cell.l.Target)) : "");
-        }
-        matrix.push(mrow); links.push(lrow);
-      }
-      return { matrix, links };
-    }
 
-    function loadFile(file) {
-      const rd = new FileReader();
-      rd.onload = e => {
-        try {
-          const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
-          const name = wb.SheetNames.find(n => n.trim().toUpperCase() === SHEET_NAME.toUpperCase()) || wb.SheetNames[0];
-          const { matrix, links } = sheetToMatrixWithLinks(wb.Sheets[name]);
-          ROWS = normalize(matrix, links);
-          if (!ROWS.length) throw new Error("la pestaña «" + name + "» no tiene filas reconocibles");
-          document.getElementById("errBanner").style.display = "none";
-          document.getElementById("demoBanner").style.display = "none";
-          const conLink = ROWS.reduce((a, r) => a + STAGES.filter(s => r.stages[s.key].url).length, 0);
-          statusUI("ok", `Archivo «${name}» · ${ROWS.length} cargas · ${conLink} documentos con link`);
-          renderAll();
-        } catch (err) { showError("<b>No se pudo leer el archivo.</b> " + esc(err.message)); }
-      };
-      rd.readAsArrayBuffer(file);
-    }
 
     /* Muestra real de la hoja para poder evaluar el diseño sin publicarla */
     const DEMO = [
@@ -2740,7 +2700,7 @@
     function loadDemo() {
       ROWS = normalize(DEMO);
       showDemo(`<b>Modo demostración.</b> Muestra de 19 cargas incrustada en el archivo, sin links y sin montos completos.
-    Usa <b>Subir Excel</b> para cargar las ~85 cargas reales con sus documentos.`);
+    No se pudo conectar con la hoja real; revisa la conexión y vuelve a cargar.`);
       renderAll();
     }
 
@@ -2753,8 +2713,7 @@
       c.textContent = open ? "▸" : "▾";
     };
     document.getElementById("btnReload").onclick = loadLive;
-    document.getElementById("btnUpload").onclick = () => document.getElementById("fileInput").click();
-    document.getElementById("fileInput").onchange = e => { if (e.target.files[0]) loadFile(e.target.files[0]); };
+
     ["fEstado", "fProv", "fAgente"].forEach(id => document.getElementById(id).onchange = () => { OPEN_ROW = null; renderAll(); });
     /* Selección múltiple con un clic simple, sin Cmd ni Ctrl.
        Por defecto el navegador sustituye la selección al hacer clic y
@@ -2817,7 +2776,7 @@
         document.getElementById("authPanel").style.display = "none";
         el.style.display = "none";
         document.body.classList.remove("bloqueado");
-        loadLive();
+        pintarDesdePrefetch();
       } else {
         /* Correo NO autorizado: muestra aviso y no carga datos */
         el.textContent = "Este correo no tiene acceso al panel. Contacta a Netso si crees que es un error.";
@@ -2841,6 +2800,56 @@
         { theme: "outline", size: "large", text: "signin_with", locale: "es", width: 300 }
       );
     }
+
+    /* El backend tarda unos 6 s fijos. Si esperamos a que el usuario inicie
+       sesión para empezar a pedirlos, esos 6 s se suman a lo que tarde en
+       hacer clic. Se piden ya y se pintan solo si el correo está autorizado.
+       El token viaja en el HTML público, así que esto no abre ninguna puerta
+       que no estuviera abierta. */
+    let PREFETCH = null;
+    let PREFETCH_T0 = 0;
+
+    function arrancarPrefetch() {
+      PREFETCH_T0 = Date.now();
+      PREFETCH = fetch(UPLOAD_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ token: UPLOAD_TOKEN, accion: "leer" })
+      }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+    }
+
+    /* Pinta con lo que trajo el prefetch. Si no trajo nada, si pasó demasiado
+       tiempo desde que se pidió, o si algo falla por el camino, se cae a la
+       carga normal. El try/catch no es decorativo: sin él, cualquier error aquí
+       deja el tablero cargando para siempre, sin respaldo y sin aviso. */
+    async function pintarDesdePrefetch() {
+      const DEMASIADO_VIEJO = 3 * 60 * 1000;
+      try {
+        let data = null;
+        if (PREFETCH && Date.now() - PREFETCH_T0 < DEMASIADO_VIEJO) {
+          data = await PREFETCH;
+        }
+        if (data && data.ok && data.filas) {
+          const rows = normalize(data.matriz, data.links);
+          asignarPagos(data.pagos, rows);
+          asignarPendientes(data.pendientes, rows);
+          if (data.ocultas > 0) DATA_ALERTS.unshift(`<b>${data.ocultas}</b> filas de la hoja están <b>ocultas</b> (por un filtro o escondidas a mano) y no se están contando. Los KPIs, el pipeline y las gráficas muestran menos de lo que hay. Quita el filtro en Google Sheets para verlas.`);
+          if (rows.length) {
+            ROWS = rows;
+            const conLink = ROWS.reduce((a, r) => a + STAGES.filter(s => r.stages[s.key].url).length, 0);
+            const hhmm = new Date().toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" });
+            statusUI("ok", `En vivo (API) · ${ROWS.length} cargas · ${conLink} documentos con link · ${hhmm}`);
+            renderAll();
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("El prefetch falló, se usa la carga normal:", e && e.message);
+      }
+      loadLive();
+    }
+
+    arrancarPrefetch();
 
     iniciarGoogleSignIn();
 
