@@ -26,7 +26,7 @@ const SHEET_NAME  = "CONTROL DE CARGAS";
 const LOG_SHEET   = "LOG";
 const PAGOS_SHEET = "PAGOS";
 const PEND_SHEET  = "PAGOS PENDIENTES";
-const BUILD       = "v6.4";
+const BUILD       = "v6.5";
 const ID_HEADER   = "ID";
 
 /* etapa -> columna donde se guarda la URL del documento */
@@ -78,6 +78,10 @@ const CAMPOS_PI = {
   terminos:      "Terminos de credito",
   observaciones: "Observaciones",
   fechaPago:     "Fecha de pago",
+  etd:           "ETD",
+  eta:           "ETA",
+  contenedor:    "Container ID",
+  agente:        "Agente aduanal",
 };
 
 /* Campos aceptados al crear una carga */
@@ -273,6 +277,13 @@ function guardarDatosPI(p) {
     if (campo === "fechaPago")    valor = parsearFecha(v) || v;
     if (campo === "anticipoPct")  valor = Number(v);
     if (campo === "subtotal")     valor = Number(v);
+
+    /* ETD y ETA son columnas de fecha: si el valor no se puede interpretar
+       se rechaza, en vez de escribir texto suelto en una celda de fecha. */
+    if (campo === "etd" || campo === "eta") {
+      valor = parsearFecha(v);
+      if (!valor) throw new Error("La fecha de " + header + " no es válida: '" + v + "'");
+    }
 
     if (campo === "anticipoPct" && (isNaN(valor) || valor < 0 || valor > 1)) {
       throw new Error("El anticipo debe ser una fracción entre 0 y 1 (0.2 = 20%)");
