@@ -156,6 +156,28 @@ sesión de su lado y aquí no se guarda nada. Tocar el cuerpo de `loadLive`,
 protegida. Tocar el contenido del HEADER, los KPIs, los filtros, la tabla y
 los modales. Añadir cualquier otro CDN. Y tocar `BACKENDS` o el token.
 
+## Excepción autorizada · 2026-09-22 · el botón de editar sale del PI
+
+El botón "Editar datos" vive dentro de `timelineHTML`, colgado de la etapa PI,
+porque cuando se hizo solo editaba datos del PI. Hoy ese mismo formulario cubre
+proveedor, términos, observaciones, comprobantes, pagos pendientes y los cuatro
+campos logísticos. Su sitio actual miente: parece que edita el documento PI, no
+la carga.
+
+Se autoriza, y solo para esto:
+
+- `timelineHTML`: eliminar el bloque `if (st.key === "pi" && r.id) { ... }` que
+  añade ese botón. Es la única eliminación autorizada. El botón de subir, el
+  lápiz del número de documento y todo lo demás de la función se quedan igual.
+- `detailHTML`: añadir, como primer hijo del `<div class="dwrap">` y antes de la
+  llamada a `timelineHTML(r)`, una barra con ese mismo botón alineado a la
+  derecha, con las clases `.btn` y `.btn-ghost` que ya existen.
+- Cambiar el texto del botón a "Editar datos de la carga", y el título del modal
+  de "Datos del PI" a "Datos de la carga".
+
+Sigue prohibido tocar cómo se pintan las etapas y sus clases CSS, el resto de
+`detailHTML`, `renderTable`, `normalize` y el resto de la lista protegida.
+
 ## Historial
 
 Las excepciones ya ejecutadas y en producción se movieron a
