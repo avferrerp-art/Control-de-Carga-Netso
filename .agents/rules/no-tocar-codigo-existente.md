@@ -150,6 +150,14 @@ Está prohibido escribir el correo al lado de su huella, ni en un comentario,
 ni en el nombre de una variable, ni en ningún otro sitio del archivo. El
 `index.html` es público; poner la leyenda anularía el motivo de usar huellas.
 
+Ampliación del 2026-09-22: se autoriza pedir los datos al backend en cuanto
+carga la página, en paralelo con el inicio de sesión, y pintarlos solo si el
+correo resulta autorizado. El backend tarda unos 6 s fijos, y esperar a que el
+usuario haga clic antes de empezar a pedirlos duplicaba la espera. Esto no
+cambia nada en seguridad: el token ya viaja en el `index.html` público, así que
+cualquiera puede hacer esa misma petición sin pasar por el portón. Lo que el
+portón decide es qué se PINTA, no qué se pide.
+
 Sigue prohibido: `localStorage` y `sessionStorage` — Google mantiene la
 sesión de su lado y aquí no se guarda nada. Tocar el cuerpo de `loadLive`,
 `normalize`, `renderTable`, `detailHTML`, `btnReload` y el resto de la lista
