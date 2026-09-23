@@ -1004,7 +1004,8 @@
         <div class="fld"><label>Estado</label><select id="fEstado" multiple size="4"></select></div>
         <div class="fld"><label>Proveedor</label><select id="fProv" multiple size="4"></select></div>
         <div class="fld"><label>Agente aduanal</label><select id="fAgente" multiple size="4"></select></div>
-        <div class="fld grow"><label>Buscar (proveedor, PI, invoice, BL, contenedor)</label><input type="text"
+        <div class="fld"><label>Buque</label><select id="fBuque" multiple size="4"></select></div>
+        <div class="fld grow"><label>Buscar (proveedor, PI, invoice, BL, contenedor, buque)</label><input type="text"
             id="fSearch" placeholder="Escribe para filtrar…" /></div>
         <span class="clear" id="clearFilters">Limpiar filtros</span>
         <div style="flex-basis:100%;font-size:12px;color:var(--muted);margin-top:2px">
@@ -1059,7 +1060,7 @@
               <th>Ruta documental</th>
               <th>Estado</th>
               <th>Contenedor</th>
-              <th>Agente aduanal</th>
+              <th>Buque</th>
             </tr>
           </thead>
           <tbody id="tbody">
@@ -1181,6 +1182,14 @@
           <label for="piContenedor">Contenedor</label>
           <input type="text" id="piContenedor" placeholder="Dejar vacío para no cambiar" />
           <div id="piContenedorActual" style="font-size:12px;color:var(--muted);margin-top:4px;display:none;"></div>
+        </div>
+
+        <div class="fld" style="margin-bottom:16px">
+          <label for="piBuque">Buque</label>
+          <input type="text" id="piBuque" list="listaBuques" autocomplete="off"
+            placeholder="Dejar vacío para no cambiar" />
+          <datalist id="listaBuques"></datalist>
+          <div id="piBuqueActual" style="font-size:12px;color:var(--muted);margin-top:4px;display:none;"></div>
         </div>
 
         <div class="fld" style="margin-bottom:16px">
@@ -1600,6 +1609,7 @@
         prov: find(["Supplier", "Proveedor"]),
         cont: find(["Container ID", "Contenedor", "Container"]),
         agente: find(["Agente aduanal", "Agente Aduanal", "Agente"]),
+        buque: find(["Buque"]),
         id: find(["ID"]),
         subtotal: find(["Subtotal"]),
         flete: find(["Flete"]),
@@ -1683,6 +1693,7 @@
           cont: get(r, col.cont),
           contUrl: getLink(col.cont),        // tracking de contenedor (searates) si está enlazado
           agente: get(r, col.agente),
+          buque: get(r, col.buque),
           id: get(r, col.id),   // identificador estable de la Fase 0
           stages,
           subtotal: get(r, col.subtotal),
@@ -1754,6 +1765,7 @@
         estado: elegidos("fEstado"),
         prov: elegidos("fProv"),
         agente: elegidos("fAgente"),
+        buque: elegidos("fBuque"),
         q: document.getElementById("fSearch").value.trim().toLowerCase(),
       };
     }
@@ -1766,9 +1778,10 @@
         if (f.estado.length && f.estado.indexOf(r.estado) === -1) return false;
         if (f.prov.length && f.prov.indexOf(r.prov) === -1) return false;
         if (f.agente.length && f.agente.indexOf(r.agente) === -1) return false;
+        if (f.buque.length && f.buque.indexOf(r.buque) === -1) return false;
         if (!ignorarPipe && PIPE_FILTER && r.stages[PIPE_FILTER].has) return false;
         if (f.q) {
-          const hay = [r.prov, r.cont, r.agente, r.estadoRaw, r.id,
+          const hay = [r.prov, r.cont, r.agente, r.buque, r.estadoRaw, r.id,
           ...STAGES.map(s => r.stages[s.key].label)].join(" ").toLowerCase();
           if (!hay.includes(f.q)) return false;
         }
@@ -2186,6 +2199,7 @@
       ${kv("Contenedor", r.contUrl
         ? `<a href="${esc(r.contUrl)}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">${esc(r.cont)} ↗</a>`
         : esc(r.cont))}
+      ${kv("Buque", esc(r.buque))}
       ${kv("Agente aduanal", esc(r.agente))}
       ${kv("Subtotal", esc(r.subtotal))}
       ${kv("Flete", esc(r.flete))}
@@ -2441,7 +2455,7 @@
       <td>${r.contUrl
             ? `<a href="${esc(r.contUrl)}" target="_blank" rel="noopener" title="Rastrear contenedor" onclick="event.stopPropagation()" style="color:var(--blue);font-weight:600;text-decoration:none">${esc(r.cont)} ↗</a>`
             : (esc(r.cont) || "—")}</td>
-      <td>${esc(r.agente) || "—"}</td>
+      <td>${esc(r.buque) || "—"}</td>
     </tr>`;
         const det = open ? `<tr class="detail"><td colspan="7">${detailHTML(r)}</td></tr>` : "";
         return main + det;
@@ -2471,6 +2485,7 @@
 
       fillSelect(document.getElementById("fProv"), new Set(ROWS.map(r => r.prov)));
       fillSelect(document.getElementById("fAgente"), new Set(ROWS.map(r => r.agente)));
+      fillSelect(document.getElementById("fBuque"), new Set(ROWS.map(r => r.buque)));
     }
     function renderAlerts() {
       const p = document.getElementById("alertsPanel"), l = document.getElementById("alertsList");
@@ -2714,14 +2729,14 @@
     };
     document.getElementById("btnReload").onclick = loadLive;
 
-    ["fEstado", "fProv", "fAgente"].forEach(id => document.getElementById(id).onchange = () => { OPEN_ROW = null; renderAll(); });
+    ["fEstado", "fProv", "fAgente", "fBuque"].forEach(id => document.getElementById(id).onchange = () => { OPEN_ROW = null; renderAll(); });
     /* Selección múltiple con un clic simple, sin Cmd ni Ctrl.
        Por defecto el navegador sustituye la selección al hacer clic y
        obliga a mantener una tecla para acumular. Aquí se intercepta el
        mousedown para alternar cada opción por separado.
        El listener va sobre el <select>, no sobre las <option>: así
        sobrevive a que refreshOptions reconstruya la lista entera. */
-    ["fEstado", "fProv", "fAgente"].forEach(id => {
+    ["fEstado", "fProv", "fAgente", "fBuque"].forEach(id => {
       const sel = document.getElementById(id);
       if (!sel) return;
       sel.addEventListener("mousedown", e => {
@@ -2733,7 +2748,7 @@
     });
     document.getElementById("fSearch").oninput = () => { OPEN_ROW = null; renderTable(applyFilters(ROWS)); };
     document.getElementById("clearFilters").onclick = () => {
-      ["fEstado", "fProv", "fAgente"].forEach(id => {
+      ["fEstado", "fProv", "fAgente", "fBuque"].forEach(id => {
         [...document.getElementById(id).options].forEach(o => { o.selected = false; });
       });
       document.getElementById("fSearch").value = "";
@@ -3087,6 +3102,7 @@
       document.getElementById("piEtd").value = "";
       document.getElementById("piEta").value = "";
       document.getElementById("piContenedor").value = "";
+      document.getElementById("piBuque").value = "";
 
       const pintarActual = (idDiv, texto) => {
         const el = document.getElementById(idDiv);
@@ -3096,6 +3112,16 @@
       pintarActual("piEtdActual", fmtDate(r.stages.etd.date));
       pintarActual("piEtaActual", fmtDate(r.stages.eta.date));
       pintarActual("piContenedorActual", r.cont);
+
+      pintarActual("piBuqueActual", r.buque);
+
+      /* El desplegable de sugerencias se arma con los buques que ya existen
+         en la hoja. No limita lo que se puede escribir: solo ahorra teclear
+         un nombre que ya está en otra carga. */
+      const buques = [...new Set(ROWS.map(x => x.buque))].filter(Boolean)
+        .sort((a, b) => String(a).localeCompare(String(b)));
+      document.getElementById("listaBuques").innerHTML =
+        buques.map(b => `<option value="${esc(b)}"></option>`).join("");
 
       /* El agente arranca en "sin cambiar" a propósito: si arrancara en el
          primero de la lista, guardar le asignaría un agente a una carga que
@@ -3395,6 +3421,7 @@
       const etd = document.getElementById("piEtd").value;
       const eta = document.getElementById("piEta").value;
       const contenedor = document.getElementById("piContenedor").value.trim();
+      const buque = document.getElementById("piBuque").value.trim();
       const agSel = document.getElementById("piAgenteSel").value;
       const agOtro = document.getElementById("piAgenteOtro").value.trim();
       const agente = agSel === "Otro" ? agOtro : agSel;
@@ -3410,6 +3437,7 @@
       if (eta) payload.eta = eta;
       if (contenedor) payload.contenedor = contenedor;
       if (agente) payload.agente = agente;
+      if (buque) payload.buque = buque;
 
       const fileInput = document.getElementById("piComprobante");
       const file = fileInput.files[0];
