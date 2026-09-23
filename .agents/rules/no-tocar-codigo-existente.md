@@ -125,6 +125,30 @@ Sigue prohibido tocar el resto de esas cuatro funciones, `normalize` más allá
 de leer la columna nueva, `renderKPIs`, `renderPipe`, `renderCharts`, y el resto
 de la lista protegida.
 
+## Excepción autorizada · 2026-09-23 · fuera los filtros de agente y buque
+
+La barra de filtros se llenó. En el uso real solo se filtra por estado y por
+proveedor; los desplegables de agente aduanal y de buque ocupan sitio y no se
+usan. Se quitan los dos. No se pierde nada: el cuadro de búsqueda sigue
+encontrando por ambos campos, porque siguen en su lista de campos.
+
+Se autoriza, y solo para esto:
+
+- Eliminar del HTML los dos `<div class="fld">` de `fAgente` y `fBuque`.
+- `filters`: eliminar las entradas `agente` y `buque` del objeto que devuelve.
+- `applyFilters`: eliminar las dos líneas que descartan por esos campos. La
+  línea del buscador de texto NO se toca: `r.agente` y `r.buque` se quedan ahí.
+- `refreshOptions`: eliminar las dos llamadas a `fillSelect` de esos
+  desplegables.
+- Quitar `"fAgente"` y `"fBuque"` de los tres arrays de ids.
+
+Los campos siguen leyéndose en `normalize`, mostrándose en `detailHTML` y
+editándose desde el modal. Esto solo retira dos controles de la barra de
+filtros.
+
+Sigue prohibido tocar el resto de esas funciones, el filtro de estado, el de
+proveedor, el del pipeline, y el resto de la lista protegida.
+
 ## Historial
 
 Las excepciones ya ejecutadas y en producción se movieron a
