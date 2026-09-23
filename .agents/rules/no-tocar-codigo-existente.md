@@ -99,6 +99,32 @@ columnas cada cierto tiempo.
 
 Todo lo demás de la lista protegida sigue intocable.
 
+## Excepción autorizada · 2026-09-23 · Buque
+
+El agente aduanal ocupa una columna de la tabla, pero en el día a día lo que se
+mira para saber dónde va una carga es el buque. El agente no se va a ninguna
+parte: sigue en la hoja, en el panel desplegado, en el modal y en su propio
+filtro. Lo único que cambia es quién ocupa esa columna de la tabla.
+
+Se autoriza, y solo para esto:
+
+- `renderTable`: sustituir el contenido de la ÚLTIMA celda de la fila, hoy
+  `${esc(r.agente) || "—"}`, por el buque. Una línea. No se tocan `data-i`,
+  `tr.onclick`, el `colspan` ni ninguna otra celda.
+- `filters`: añadir una entrada `buque` al objeto que devuelve.
+- `applyFilters`: añadir una línea que descarte las filas que no coincidan, con
+  la misma forma que las tres que ya están, y añadir `r.buque` a la lista de
+  campos donde busca el cuadro de texto.
+- `refreshOptions`: añadir una llamada más a `fillSelect`, para el desplegable
+  nuevo.
+
+Leer la columna en `normalize` y mostrar el campo en `detailHTML` no necesitan
+excepción: los cubre el permiso permanente de más arriba.
+
+Sigue prohibido tocar el resto de esas cuatro funciones, `normalize` más allá
+de leer la columna nueva, `renderKPIs`, `renderPipe`, `renderCharts`, y el resto
+de la lista protegida.
+
 ## Historial
 
 Las excepciones ya ejecutadas y en producción se movieron a
