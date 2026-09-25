@@ -1215,7 +1215,23 @@
         </div>
         <div style="border-top:1px solid var(--line);margin:22px 0 14px"></div>
         <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:12px;letter-spacing:.3px">
+          CONTENIDO DE LA CARGA</div>
+
+        <div class="fld" style="margin-bottom:16px">
+          <div id="piEtiquetas" style="display:flex;flex-wrap:wrap;gap:10px 16px;margin-bottom:10px"></div>
+          <input type="text" id="piVariosTxt" placeholder="Describe el contenido" style="display:none" />
+          <div id="piContenidoActual" style="font-size:12px;color:var(--muted);margin-top:6px;display:none;"></div>
+        </div>
+
+        <div style="border-top:1px solid var(--line);margin:22px 0 14px"></div>
+        <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:12px;letter-spacing:.3px">
           DATOS LOGÍSTICOS</div>
+
+        <div class="fld" style="margin-bottom:16px">
+          <label for="piFechaOdc">Fecha ODC</label>
+          <input type="date" id="piFechaOdc" />
+          <div id="piFechaOdcActual" style="font-size:12px;color:var(--muted);margin-top:4px;display:none;"></div>
+        </div>
 
         <div class="fld" style="margin-bottom:16px">
           <label for="piEtd">ETD (zarpe)</label>
@@ -1487,6 +1503,14 @@
     const TERMINOS_CREDITO = [
       "SMC-20/150DPT", "SMC-10/150DPT", "SNT-30/40BL/60D", "JL-100BL",
       "GL-30/120DPT", "NC-30/70BL", "YS-30/70BL",
+    ];
+
+    /* Las ocho etiquetas de contenido van escritas aquí a propósito: así nadie
+       puede inventarse una desde el dashboard. "Varios" no está en la lista
+       porque no es una etiqueta, es la puerta al texto libre. */
+    const ETIQUETAS_CONTENIDO = [
+      "Accesorios", "Equipos Activos", "Drops", "ASU", "ADSS",
+      "Fibras Ópticas (varias)", "Uso interno", "POP",
     ];
 
     /* ====== ESTADO GLOBAL ====== */
@@ -3224,6 +3248,37 @@
       document.getElementById("piAgenteOtro").style.display = "none";
       document.getElementById("piAgenteOtro").value = "";
 
+      /* Etiquetas: se marcan las que la carga ya tiene. Lo que no sea una de
+         las ocho —el texto viejo escrito a mano— cae en el campo de Varios,
+         para poder verlo y sobrescribirlo sin perderlo de vista. */
+      const actuales = String(r.contenido || "").split(",").map(s => s.trim()).filter(Boolean);
+      const conocidas = actuales.filter(t => ETIQUETAS_CONTENIDO.indexOf(t) !== -1);
+      const sueltas = actuales.filter(t => ETIQUETAS_CONTENIDO.indexOf(t) === -1);
+
+      const marca = (contenido, extra) =>
+        `<label style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:500;cursor:pointer">
+           <input type="checkbox" ${extra} style="margin:0;width:auto" /> ${contenido}
+         </label>`;
+
+      document.getElementById("piEtiquetas").innerHTML =
+        ETIQUETAS_CONTENIDO.map(t =>
+          marca(esc(t), `class="chk-etq" value="${esc(t)}" ${conocidas.indexOf(t) !== -1 ? "checked" : ""}`)
+        ).join("")
+        + marca("Varios", `id="piVariosChk" ${sueltas.length ? "checked" : ""}`);
+
+      const txtVarios = document.getElementById("piVariosTxt");
+      txtVarios.value = sueltas.join(", ");
+      txtVarios.style.display = sueltas.length ? "block" : "none";
+      document.getElementById("piVariosChk").onchange = e => {
+        txtVarios.style.display = e.target.checked ? "block" : "none";
+        if (!e.target.checked) txtVarios.value = "";
+      };
+
+      pintarActual("piContenidoActual", r.contenido);
+
+      document.getElementById("piFechaOdc").value = "";
+      pintarActual("piFechaOdcActual", fmtDate(r.fechaOdc));
+
       document.getElementById("piObs").value = r.obs || "";
 
       if (r.fechaPago) {
@@ -3510,6 +3565,12 @@
       const eta = document.getElementById("piEta").value;
       const contenedor = document.getElementById("piContenedor").value.trim();
       const buque = document.getElementById("piBuque").value.trim();
+      const etqs = [...document.querySelectorAll(".chk-etq:checked")].map(c => c.value);
+      const varios = document.getElementById("piVariosChk").checked
+        ? document.getElementById("piVariosTxt").value.trim() : "";
+      const contenido = etqs.concat(varios ? [varios] : []).join(", ");
+      const fechaOdc = document.getElementById("piFechaOdc").value;
+
       const agSel = document.getElementById("piAgenteSel").value;
       const agOtro = document.getElementById("piAgenteOtro").value.trim();
       const agente = agSel === "Otro" ? agOtro : agSel;
@@ -3526,6 +3587,8 @@
       if (contenedor) payload.contenedor = contenedor;
       if (agente) payload.agente = agente;
       if (buque) payload.buque = buque;
+      if (contenido) payload.contenido = contenido;
+      if (fechaOdc) payload.fechaOdc = fechaOdc;
 
       const fileInput = document.getElementById("piComprobante");
       const file = fileInput.files[0];
