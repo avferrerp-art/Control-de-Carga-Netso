@@ -187,6 +187,50 @@ Sigue prohibido tocar `normalize`, `renderKPIs`, `renderPipe`, `renderCharts`,
 `applyFilters`, `filters`, `refreshOptions`, `detailHTML`, `timelineHTML` y el
 resto de la lista protegida.
 
+## Excepción autorizada · 2026-09-25 · pestañas y barra de filtros única
+
+Las cuatro gráficas se meten entre los filtros y la tabla, que es lo que de
+verdad se consulta a diario. Se separan en su propia pestaña. Los filtros no se
+duplican: se suben por encima de las pestañas, en una sola barra que sirve a la
+tabla y a las gráficas a la vez. Duplicarlos y sincronizarlos sería más código y
+una fuente de fallos silenciosos.
+
+El orden nuevo de `.wrap` queda así:
+
+    authPanel · HEADER · KPIs · FILTROS · pestañas
+      pestaña Cargas:   TABLA · ALERTAS · PIPELINE
+      pestaña Gráficas: CHARTS
+
+Los KPIs quedan fuera de las pestañas a propósito: son el resumen de todo y ya
+respetan los filtros, así que sirven igual mirando la tabla o las gráficas.
+
+El pipeline baja al final del todo y se vuelve plegable, cerrado por defecto: se
+usa poco y ocupaba el sitio entre los filtros y la tabla. Al cerrarlo se limpia
+`PIPE_FILTER`, porque si no la tabla quedaría filtrada por una etapa que ya no
+está a la vista. `renderPipe` no se modifica: solo se pliega y se mueve el HTML
+que lo contiene, conservando el `<div id="pipe">` donde escribe.
+
+Se autoriza, y solo para esto:
+
+- **Mover dos bloques de HTML existentes**, lo que incluye reindentarlos: el de
+  FILTROS sube antes de KPIs, y el de CHARTS baja al final, dentro de su
+  pestaña. Es la única excepción a la prohibición de reordenar código.
+- Envolver los bloques en dos contenedores nuevos, `#tabCargas` y
+  `#tabGraficas`, y añadir la barra de pestañas y su CSS.
+- Llamar a `renderCharts(applyFilters(ROWS))` al mostrar la pestaña de gráficas.
+  Chart.js mide el ancho del canvas al dibujar, y mientras la pestaña está
+  oculta ese ancho es cero: sin este redibujado las gráficas salen diminutas o
+  en blanco la primera vez que se abre la pestaña. No se modifica ni una línea
+  de `renderCharts`, solo se la llama.
+
+Los dos contenedores tienen que ser **hijos directos de `.wrap`**, o la regla
+`body.bloqueado .wrap > *:not(#authPanel)` del portón de acceso dejaría de
+ocultarlos y el tablero se vería sin iniciar sesión.
+
+Sigue prohibido modificar el contenido de los bloques movidos, `renderCharts`,
+`renderKPIs`, `renderPipe`, `renderTable`, `applyFilters`, `filters`,
+`refreshOptions` y el resto de la lista protegida.
+
 ## Historial
 
 Las excepciones ya ejecutadas y en producción se movieron a

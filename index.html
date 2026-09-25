@@ -971,6 +971,12 @@
       font-size: 12px;
       font-weight: 600
     }
+
+    /* Pestañas */
+    .tabs{display:flex;gap:4px;margin-top:18px;border-bottom:1px solid var(--line)}
+    .tab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;padding:10px 16px;font-family:inherit;font-size:14.5px;font-weight:600;color:var(--muted);cursor:pointer}
+    .tab:hover{color:var(--ink)}
+    .tab.on{color:var(--ink);border-bottom-color:var(--green)}
   </style>
 </head>
 
@@ -1040,14 +1046,6 @@
       </div>
     </div>
 
-    <!-- PIPELINE -->
-    <div class="panel" style="margin-top:18px">
-      <h3>Pipeline documental</h3>
-      <p class="p-sub">Cargas que ya tienen cada documento. Haz clic en una etapa para filtrar las que <b>todavía no lo
-          tienen</b>.</p>
-      <div class="pipe" id="pipe"></div>
-    </div>
-
     <!-- FILTROS -->
     <div class="panel" style="margin-top:18px">
       <h3>Filtros</h3>
@@ -1065,29 +1063,13 @@
       </div>
     </div>
 
-    <!-- CHARTS -->
-    <div class="charts">
-      <div class="panel">
-        <h3>Distribución por estado</h3>
-        <p class="p-sub">Proporción de cargas según su etapa logística</p>
-        <div class="chart-box"><canvas id="chartEstado"></canvas></div>
-      </div>
-      <div class="panel">
-        <h3>Cargas por proveedor</h3>
-        <p class="p-sub">Top 10 por cantidad de cargas</p>
-        <div class="chart-box"><canvas id="chartProv"></canvas></div>
-      </div>
-      <div class="panel">
-        <h3>Evolución mensual</h3>
-        <p class="p-sub">Cantidad de cargas por mes (según Fecha PI/INV)</p>
-        <div class="chart-box"><canvas id="chartMes"></canvas></div>
-      </div>
-      <div class="panel">
-        <h3>Completitud del expediente</h3>
-        <p class="p-sub">Etapas registradas vs. sin registrar en cada carga</p>
-        <div class="chart-box"><canvas id="chartPipe"></canvas></div>
-      </div>
+    <!-- PESTAÑAS -->
+    <div class="tabs">
+      <button class="tab on" id="tabBtnCargas" type="button">Cargas</button>
+      <button class="tab" id="tabBtnGraficas" type="button">Gráficas</button>
     </div>
+
+    <div id="tabCargas">
 
     <!-- TABLA -->
     <div class="panel tbl-wrap">
@@ -1132,6 +1114,48 @@
       </div>
       <ul id="alertsList" style="display:none"></ul>
     </div>
+
+    <!-- PIPELINE -->
+    <div class="panel" style="margin-top:18px">
+      <div id="pipeToggle" style="cursor:pointer;display:flex;align-items:center;gap:10px">
+        <span id="pipeCaret" style="color:var(--muted);font-size:13px">▸</span>
+        <h3 style="margin:0">Pipeline documental</h3>
+      </div>
+      <div id="pipeBody" style="display:none">
+        <p class="p-sub" style="margin-top:8px">Cargas que ya tienen cada documento. Haz clic en una etapa para filtrar
+          las que <b>todavía no lo tienen</b>.</p>
+        <div class="pipe" id="pipe"></div>
+      </div>
+    </div>
+
+    </div><!-- /tabCargas -->
+
+    <div id="tabGraficas" style="display:none">
+    <!-- CHARTS -->
+    <div class="charts">
+      <div class="panel">
+        <h3>Distribución por estado</h3>
+        <p class="p-sub">Proporción de cargas según su etapa logística</p>
+        <div class="chart-box"><canvas id="chartEstado"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Cargas por proveedor</h3>
+        <p class="p-sub">Top 10 por cantidad de cargas</p>
+        <div class="chart-box"><canvas id="chartProv"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Evolución mensual</h3>
+        <p class="p-sub">Cantidad de cargas por mes (según Fecha PI/INV)</p>
+        <div class="chart-box"><canvas id="chartMes"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Completitud del expediente</h3>
+        <p class="p-sub">Etapas registradas vs. sin registrar en cada carga</p>
+        <div class="chart-box"><canvas id="chartPipe"></canvas></div>
+      </div>
+    </div>
+    </div><!-- /tabGraficas -->
+
 
   </div>
 
@@ -2865,6 +2889,37 @@
       });
       document.getElementById("fSearch").value = "";
       PIPE_FILTER = null; OPEN_ROW = null; renderAll();
+    };
+
+    /* Pestañas. Al mostrar las gráficas hay que volver a pintarlas: Chart.js
+       mide el ancho del canvas al dibujar, y mientras la pestaña está oculta
+       ese ancho es cero. Sin este redibujado saldrían diminutas o en blanco la
+       primera vez que se abre la pestaña. */
+    function mostrarPestana(cual) {
+      const cargas = cual === "cargas";
+      document.getElementById("tabCargas").style.display = cargas ? "block" : "none";
+      document.getElementById("tabGraficas").style.display = cargas ? "none" : "block";
+      document.getElementById("tabBtnCargas").classList.toggle("on", cargas);
+      document.getElementById("tabBtnGraficas").classList.toggle("on", !cargas);
+      if (!cargas) renderCharts(applyFilters(ROWS));
+    }
+
+    document.getElementById("tabBtnCargas").onclick = () => mostrarPestana("cargas");
+    document.getElementById("tabBtnGraficas").onclick = () => mostrarPestana("graficas");
+
+    /* El pipeline arranca plegado y vive al final: se usa poco y ocupaba el
+       sitio entre los filtros y la tabla. Al cerrarlo se limpia su filtro,
+       porque si no la tabla quedaría filtrada por una etapa que ya no se ve. */
+    document.getElementById("pipeToggle").onclick = () => {
+      const cuerpo = document.getElementById("pipeBody");
+      const abierto = cuerpo.style.display !== "none";
+      cuerpo.style.display = abierto ? "none" : "block";
+      document.getElementById("pipeCaret").textContent = abierto ? "▸" : "▾";
+      if (abierto && PIPE_FILTER) {
+        PIPE_FILTER = null;
+        OPEN_ROW = null;
+        renderAll();
+      }
     };
 
     /* El desplegable de "Nueva carga" se rellena desde ESTADOS_VALIDOS para
