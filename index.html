@@ -977,6 +977,13 @@
     .tab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;padding:10px 16px;font-family:inherit;font-size:14.5px;font-weight:600;color:var(--muted);cursor:pointer}
     .tab:hover{color:var(--ink)}
     .tab.on{color:var(--ink);border-bottom-color:var(--green)}
+
+    /* El panel de observaciones queda oculto a petición: estorbaba al final de
+       la página. La lógica sigue viva —DATA_ALERTS se calcula igual y se puede
+       consultar desde la consola—, así que para recuperarlo basta con borrar
+       esta regla. Lleva !important porque renderAlerts escribe el display en el
+       propio elemento, y un estilo en línea gana a una regla normal. */
+    #alertsPanel { display: none !important }
   </style>
 </head>
 
