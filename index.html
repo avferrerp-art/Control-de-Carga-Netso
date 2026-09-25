@@ -920,6 +920,70 @@
     #authPanel #googleBtn { display: flex; justify-content: center }
 
     #authPanel #authInfo { text-align: left }
+
+    /* Celda de ETA: cuenta atrás arriba, fecha debajo. El punto de color
+       sustituye al triángulo de aviso: mismo lenguaje que el semáforo de
+       la primera columna. */
+    td.eta { white-space: nowrap }
+
+    .eta-top {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600
+    }
+
+    .eta-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex: none
+    }
+
+    .eta-dot.rojo { background: var(--red) }
+    .eta-dot.ambar { background: var(--amber) }
+
+    .eta-fecha {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px
+    }
+
+    .eta-solo { color: var(--muted) }
+
+    /* Etiquetas de contenido. Las largas se recortan con puntos suspensivos
+       y el texto completo queda en el title. */
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px
+    }
+
+    .tag {
+      display: inline-block;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      background: var(--grey);
+      border-radius: 999px;
+      padding: 2px 9px;
+      font-size: 12px;
+      font-weight: 600
+    }
+
+    /* Pestañas */
+    .tabs{display:flex;gap:4px;margin-top:18px;border-bottom:1px solid var(--line)}
+    .tab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;padding:10px 16px;font-family:inherit;font-size:14.5px;font-weight:600;color:var(--muted);cursor:pointer}
+    .tab:hover{color:var(--ink)}
+    .tab.on{color:var(--ink);border-bottom-color:var(--green)}
+
+    /* El panel de observaciones queda oculto a petición: estorbaba al final de
+       la página. La lógica sigue viva —DATA_ALERTS se calcula igual y se puede
+       consultar desde la consola—, así que para recuperarlo basta con borrar
+       esta regla. Lleva !important porque renderAlerts escribe el display en el
+       propio elemento, y un estilo en línea gana a una regla normal. */
+    #alertsPanel { display: none !important }
   </style>
 </head>
 
@@ -989,22 +1053,15 @@
       </div>
     </div>
 
-    <!-- PIPELINE -->
-    <div class="panel" style="margin-top:18px">
-      <h3>Pipeline documental</h3>
-      <p class="p-sub">Cargas que ya tienen cada documento. Haz clic en una etapa para filtrar las que <b>todavía no lo
-          tienen</b>.</p>
-      <div class="pipe" id="pipe"></div>
-    </div>
-
     <!-- FILTROS -->
     <div class="panel" style="margin-top:18px">
       <h3>Filtros</h3>
       <div class="filters">
         <div class="fld"><label>Estado</label><select id="fEstado" multiple size="4"></select></div>
         <div class="fld"><label>Proveedor</label><select id="fProv" multiple size="4"></select></div>
+        <div class="fld"><label>Contenido</label><select id="fContenido" multiple size="4"></select></div>
 
-        <div class="fld grow"><label>Buscar (proveedor, PI, invoice, BL, contenedor, buque)</label><input type="text"
+        <div class="fld grow"><label>Buscar (proveedor, PI, invoice, BL, contenedor, buque, contenido)</label><input type="text"
             id="fSearch" placeholder="Escribe para filtrar…" /></div>
         <span class="clear" id="clearFilters">Limpiar filtros</span>
         <div style="flex-basis:100%;font-size:12px;color:var(--muted);margin-top:2px">
@@ -1014,6 +1071,74 @@
       </div>
     </div>
 
+    <!-- PESTAÑAS -->
+    <div class="tabs">
+      <button class="tab on" id="tabBtnCargas" type="button">Cargas</button>
+      <button class="tab" id="tabBtnGraficas" type="button">Gráficas</button>
+    </div>
+
+    <div id="tabCargas">
+
+    <!-- TABLA -->
+    <div class="panel tbl-wrap">
+      <h3>Detalle de cargas (<span id="tCount">0</span>)</h3>
+      <p class="p-sub">Clic en una fila para desplegar la línea de tiempo completa.</p>
+      <div class="legend">
+        <span><a class="step ok lnk" style="pointer-events:none">INV</a> <b>clic abre el documento en Drive</b></span>
+        <span><span class="step ok">INV</span> registrado, sin link en la celda</span>
+        <span><span class="step">INV</span> pendiente</span>
+        <span><span class="step late">INV</span> falta y ya debería estar</span>
+        <span><span class="step na">RFQ</span> columna no creada en la hoja</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Proveedor</th>
+              <th>PI No</th>
+              <th>Ruta documental</th>
+              <th>Buque</th>
+              <th>Contenido</th>
+              <th>ETA</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr>
+              <td colspan="8" class="msg">Cargando datos…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ALERTAS DE CALIDAD -->
+    <div class="panel alerts" id="alertsPanel" style="display:none">
+      <div id="alertsToggle" style="cursor:pointer;display:flex;align-items:center;gap:10px">
+        <span id="alertsCaret" style="color:var(--muted);font-size:13px">▸</span>
+        <h3 style="margin:0">Observaciones sobre los datos (<span id="alertsCount">0</span>)</h3>
+        <span style="color:var(--muted);font-size:13.5px;margin-left:6px">— opcional, no afecta el funcionamiento</span>
+      </div>
+      <ul id="alertsList" style="display:none"></ul>
+    </div>
+
+    <!-- PIPELINE -->
+    <div class="panel" style="margin-top:18px">
+      <div id="pipeToggle" style="cursor:pointer;display:flex;align-items:center;gap:10px">
+        <span id="pipeCaret" style="color:var(--muted);font-size:13px">▸</span>
+        <h3 style="margin:0">Pipeline documental</h3>
+      </div>
+      <div id="pipeBody" style="display:none">
+        <p class="p-sub" style="margin-top:8px">Cargas que ya tienen cada documento. Haz clic en una etapa para filtrar
+          las que <b>todavía no lo tienen</b>.</p>
+        <div class="pipe" id="pipe"></div>
+      </div>
+    </div>
+
+    </div><!-- /tabCargas -->
+
+    <div id="tabGraficas" style="display:none">
     <!-- CHARTS -->
     <div class="charts">
       <div class="panel">
@@ -1037,49 +1162,8 @@
         <div class="chart-box"><canvas id="chartPipe"></canvas></div>
       </div>
     </div>
+    </div><!-- /tabGraficas -->
 
-    <!-- TABLA -->
-    <div class="panel tbl-wrap">
-      <h3>Detalle de cargas (<span id="tCount">0</span>)</h3>
-      <p class="p-sub">Clic en una fila para desplegar la línea de tiempo completa.</p>
-      <div class="legend">
-        <span><a class="step ok lnk" style="pointer-events:none">INV</a> <b>clic abre el documento en Drive</b></span>
-        <span><span class="step ok">INV</span> registrado, sin link en la celda</span>
-        <span><span class="step">INV</span> pendiente</span>
-        <span><span class="step late">INV</span> falta y ya debería estar</span>
-        <span><span class="step na">RFQ</span> columna no creada en la hoja</span>
-      </div>
-      <div style="overflow-x:auto">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Proveedor</th>
-              <th>PI No</th>
-              <th>Ruta documental</th>
-              <th>Estado</th>
-              <th>Contenedor</th>
-              <th>Buque</th>
-            </tr>
-          </thead>
-          <tbody id="tbody">
-            <tr>
-              <td colspan="7" class="msg">Cargando datos…</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ALERTAS DE CALIDAD -->
-    <div class="panel alerts" id="alertsPanel" style="display:none">
-      <div id="alertsToggle" style="cursor:pointer;display:flex;align-items:center;gap:10px">
-        <span id="alertsCaret" style="color:var(--muted);font-size:13px">▸</span>
-        <h3 style="margin:0">Observaciones sobre los datos (<span id="alertsCount">0</span>)</h3>
-        <span style="color:var(--muted);font-size:13.5px;margin-left:6px">— opcional, no afecta el funcionamiento</span>
-      </div>
-      <ul id="alertsList" style="display:none"></ul>
-    </div>
 
   </div>
 
@@ -1163,7 +1247,23 @@
         </div>
         <div style="border-top:1px solid var(--line);margin:22px 0 14px"></div>
         <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:12px;letter-spacing:.3px">
+          CONTENIDO DE LA CARGA</div>
+
+        <div class="fld" style="margin-bottom:16px">
+          <div id="piEtiquetas" style="display:flex;flex-wrap:wrap;gap:10px 16px;margin-bottom:10px"></div>
+          <input type="text" id="piVariosTxt" placeholder="Describe el contenido" style="display:none" />
+          <div id="piContenidoActual" style="font-size:12px;color:var(--muted);margin-top:6px;display:none;"></div>
+        </div>
+
+        <div style="border-top:1px solid var(--line);margin:22px 0 14px"></div>
+        <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:12px;letter-spacing:.3px">
           DATOS LOGÍSTICOS</div>
+
+        <div class="fld" style="margin-bottom:16px">
+          <label for="piFechaOdc">Fecha ODC</label>
+          <input type="date" id="piFechaOdc" />
+          <div id="piFechaOdcActual" style="font-size:12px;color:var(--muted);margin-top:4px;display:none;"></div>
+        </div>
 
         <div class="fld" style="margin-bottom:16px">
           <label for="piEtd">ETD (zarpe)</label>
@@ -1437,6 +1537,14 @@
       "GL-30/120DPT", "NC-30/70BL", "YS-30/70BL",
     ];
 
+    /* Las ocho etiquetas de contenido van escritas aquí a propósito: así nadie
+       puede inventarse una desde el dashboard. "Varios" no está en la lista
+       porque no es una etiqueta, es la puerta al texto libre. */
+    const ETIQUETAS_CONTENIDO = [
+      "Accesorios", "Equipos Activos", "Drops", "ASU", "ADSS",
+      "Fibras Ópticas (varias)", "Uso interno", "POP",
+    ];
+
     /* ====== ESTADO GLOBAL ====== */
     let ROWS = [];
     let PIPE_FILTER = null;           // etapa faltante seleccionada
@@ -1609,6 +1717,8 @@
         cont: find(["Container ID", "Contenedor", "Container"]),
         agente: find(["Agente aduanal", "Agente Aduanal", "Agente"]),
         buque: find(["Buque"]),
+        contenido: find(["Contenido"]),
+        fechaOdc: find(["Fecha ODC"]),
         id: find(["ID"]),
         subtotal: find(["Subtotal"]),
         flete: find(["Flete"]),
@@ -1693,6 +1803,8 @@
           contUrl: getLink(col.cont),        // tracking de contenedor (searates) si está enlazado
           agente: get(r, col.agente),
           buque: get(r, col.buque),
+          contenido: get(r, col.contenido),
+          fechaOdc: pdate(get(r, col.fechaOdc)),
           id: get(r, col.id),   // identificador estable de la Fase 0
           stages,
           subtotal: get(r, col.subtotal),
@@ -1763,6 +1875,7 @@
       return {
         estado: elegidos("fEstado"),
         prov: elegidos("fProv"),
+        contenido: elegidos("fContenido"),
 
         q: document.getElementById("fSearch").value.trim().toLowerCase(),
       };
@@ -1775,10 +1888,17 @@
       return rows.filter(r => {
         if (f.estado.length && f.estado.indexOf(r.estado) === -1) return false;
         if (f.prov.length && f.prov.indexOf(r.prov) === -1) return false;
+        /* Este filtro compara "contiene alguna", no "es igual": la celda puede
+           llevar varias etiquetas, y una carga con `Drops, ADSS` tiene que
+           salir al filtrar por Drops. */
+        if (f.contenido.length) {
+          const suyas = String(r.contenido || "").split(",").map(s => s.trim());
+          if (!f.contenido.some(t => suyas.indexOf(t) !== -1)) return false;
+        }
 
         if (!ignorarPipe && PIPE_FILTER && r.stages[PIPE_FILTER].has) return false;
         if (f.q) {
-          const hay = [r.prov, r.cont, r.agente, r.buque, r.estadoRaw, r.id,
+          const hay = [r.prov, r.cont, r.agente, r.buque, r.contenido, r.estadoRaw, r.id,
           ...STAGES.map(s => r.stages[s.key].label)].join(" ").toLowerCase();
           if (!hay.includes(f.q)) return false;
         }
@@ -2190,7 +2310,9 @@
     <div class="dgrid">
       ${kv("Estado", estCtrl)}
       ${kv("Proveedor", esc(r.prov))}
+      ${kv("Contenido", esc(r.contenido))}
       ${kv("Fecha PI/INV", fmtDate(r.fecha))}
+      ${kv("Fecha ODC", fmtDate(r.fechaOdc))}
       ${kv("ETD (zarpe)", fmtDate(r.stages.etd.date))}
       ${kv("ETA (arribo)", fmtDate(r.stages.eta.date))}
       ${kv("Contenedor", r.contUrl
@@ -2437,10 +2559,45 @@
       });
     }
 
+    /* Contenido de la celda de ETA. Reglas acordadas: 3 días o menos rojo,
+       de 4 a 10 ámbar, más de 10 sin punto, vencida solo la fecha, y si la
+       carga ya está Recibida solo la fecha en gris: avisar de algo que ya
+       llegó sería ruido. */
+    function etaCelda(r) {
+      const d = r.stages.eta.date;
+      if (!d) return "—";
+      const fecha = fmtDate(d);
+      if (r.estado === "recibido") return `<span class="eta-solo">${fecha}</span>`;
+
+      const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+      const dia = new Date(d); dia.setHours(0, 0, 0, 0);
+      const dias = Math.round((dia - hoy) / 86400000);
+      if (dias < 0) return `<span class="eta-solo">${fecha}</span>`;
+
+      const texto = dias === 0 ? "Hoy" : dias === 1 ? "Mañana" : "En " + dias + " días";
+      const punto = dias <= 3 ? `<span class="eta-dot rojo"></span>`
+                  : dias <= 10 ? `<span class="eta-dot ambar"></span>` : "";
+
+      return `<div class="eta-top">${punto}<span>${texto}</span></div>
+      <div class="eta-fecha">${fecha}</div>`;
+    }
+
+    /* Contenido de la celda de Contenido. La celda guarda las etiquetas
+       separadas por coma, así que se parten y se pintan como pastillas. El
+       texto viejo escrito a mano se pinta igual, recortado si es largo. */
+    function contenidoCelda(r) {
+      const txt = String(r.contenido || "").trim();
+      if (!txt) return "—";
+      const partes = txt.split(",").map(s => s.trim()).filter(Boolean);
+      return `<div class="tags">`
+        + partes.map(p => `<span class="tag" title="${esc(p)}">${esc(p)}</span>`).join("")
+        + `</div>`;
+    }
+
     function renderTable(rows) {
       document.getElementById("tCount").textContent = rows.length;
       const tb = document.getElementById("tbody");
-      if (!rows.length) { tb.innerHTML = `<tr><td colspan="7" class="msg">Sin cargas que coincidan con los filtros.</td></tr>`; return; }
+      if (!rows.length) { tb.innerHTML = `<tr><td colspan="8" class="msg">Sin cargas que coincidan con los filtros.</td></tr>`; return; }
       tb.innerHTML = rows.map(r => {
         const open = OPEN_ROW === r.i;
         const main = `<tr class="row" data-i="${r.i}">
@@ -2448,13 +2605,12 @@
       <td class="id">${esc(r.prov) || "—"}</td>
       <td>${esc(r.stages.pi.label) || "—"}</td>
       <td>${trackHTML(r)}</td>
-      <td>${stateTag(r)}</td>
-      <td>${r.contUrl
-            ? `<a href="${esc(r.contUrl)}" target="_blank" rel="noopener" title="Rastrear contenedor" onclick="event.stopPropagation()" style="color:var(--blue);font-weight:600;text-decoration:none">${esc(r.cont)} ↗</a>`
-            : (esc(r.cont) || "—")}</td>
       <td>${esc(r.buque) || "—"}</td>
+      <td>${contenidoCelda(r)}</td>
+      <td class="eta">${etaCelda(r)}</td>
+      <td>${stateTag(r)}</td>
     </tr>`;
-        const det = open ? `<tr class="detail"><td colspan="7">${detailHTML(r)}</td></tr>` : "";
+        const det = open ? `<tr class="detail"><td colspan="8">${detailHTML(r)}</td></tr>` : "";
         return main + det;
       }).join("");
       tb.querySelectorAll("tr.row").forEach(tr => {
@@ -2481,6 +2637,10 @@
       [...selEst.options].forEach(o => { o.selected = elegidosEst.has(o.value); });
 
       fillSelect(document.getElementById("fProv"), new Set(ROWS.map(r => r.prov)));
+      /* Se rellena desde la constante, no desde los datos: volcar las celdas
+         metería `Drops, ADSS` como una opción propia y las decenas de textos
+         viejos escritos a mano harían el desplegable inservible. */
+      fillSelect(document.getElementById("fContenido"), ETIQUETAS_CONTENIDO);
 
     }
     function renderAlerts() {
@@ -2725,14 +2885,14 @@
     };
     document.getElementById("btnReload").onclick = loadLive;
 
-    ["fEstado", "fProv"].forEach(id => document.getElementById(id).onchange = () => { OPEN_ROW = null; renderAll(); });
+    ["fEstado", "fProv", "fContenido"].forEach(id => document.getElementById(id).onchange = () => { OPEN_ROW = null; renderAll(); });
     /* Selección múltiple con un clic simple, sin Cmd ni Ctrl.
        Por defecto el navegador sustituye la selección al hacer clic y
        obliga a mantener una tecla para acumular. Aquí se intercepta el
        mousedown para alternar cada opción por separado.
        El listener va sobre el <select>, no sobre las <option>: así
        sobrevive a que refreshOptions reconstruya la lista entera. */
-    ["fEstado", "fProv"].forEach(id => {
+    ["fEstado", "fProv", "fContenido"].forEach(id => {
       const sel = document.getElementById(id);
       if (!sel) return;
       sel.addEventListener("mousedown", e => {
@@ -2744,11 +2904,42 @@
     });
     document.getElementById("fSearch").oninput = () => { OPEN_ROW = null; renderTable(applyFilters(ROWS)); };
     document.getElementById("clearFilters").onclick = () => {
-      ["fEstado", "fProv"].forEach(id => {
+      ["fEstado", "fProv", "fContenido"].forEach(id => {
         [...document.getElementById(id).options].forEach(o => { o.selected = false; });
       });
       document.getElementById("fSearch").value = "";
       PIPE_FILTER = null; OPEN_ROW = null; renderAll();
+    };
+
+    /* Pestañas. Al mostrar las gráficas hay que volver a pintarlas: Chart.js
+       mide el ancho del canvas al dibujar, y mientras la pestaña está oculta
+       ese ancho es cero. Sin este redibujado saldrían diminutas o en blanco la
+       primera vez que se abre la pestaña. */
+    function mostrarPestana(cual) {
+      const cargas = cual === "cargas";
+      document.getElementById("tabCargas").style.display = cargas ? "block" : "none";
+      document.getElementById("tabGraficas").style.display = cargas ? "none" : "block";
+      document.getElementById("tabBtnCargas").classList.toggle("on", cargas);
+      document.getElementById("tabBtnGraficas").classList.toggle("on", !cargas);
+      if (!cargas) renderCharts(applyFilters(ROWS));
+    }
+
+    document.getElementById("tabBtnCargas").onclick = () => mostrarPestana("cargas");
+    document.getElementById("tabBtnGraficas").onclick = () => mostrarPestana("graficas");
+
+    /* El pipeline arranca plegado y vive al final: se usa poco y ocupaba el
+       sitio entre los filtros y la tabla. Al cerrarlo se limpia su filtro,
+       porque si no la tabla quedaría filtrada por una etapa que ya no se ve. */
+    document.getElementById("pipeToggle").onclick = () => {
+      const cuerpo = document.getElementById("pipeBody");
+      const abierto = cuerpo.style.display !== "none";
+      cuerpo.style.display = abierto ? "none" : "block";
+      document.getElementById("pipeCaret").textContent = abierto ? "▸" : "▾";
+      if (abierto && PIPE_FILTER) {
+        PIPE_FILTER = null;
+        OPEN_ROW = null;
+        renderAll();
+      }
     };
 
     /* El desplegable de "Nueva carga" se rellena desde ESTADOS_VALIDOS para
@@ -3132,6 +3323,37 @@
       document.getElementById("piAgenteOtro").style.display = "none";
       document.getElementById("piAgenteOtro").value = "";
 
+      /* Etiquetas: se marcan las que la carga ya tiene. Lo que no sea una de
+         las ocho —el texto viejo escrito a mano— cae en el campo de Varios,
+         para poder verlo y sobrescribirlo sin perderlo de vista. */
+      const actuales = String(r.contenido || "").split(",").map(s => s.trim()).filter(Boolean);
+      const conocidas = actuales.filter(t => ETIQUETAS_CONTENIDO.indexOf(t) !== -1);
+      const sueltas = actuales.filter(t => ETIQUETAS_CONTENIDO.indexOf(t) === -1);
+
+      const marca = (contenido, extra) =>
+        `<label style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:500;cursor:pointer">
+           <input type="checkbox" ${extra} style="margin:0;width:auto" /> ${contenido}
+         </label>`;
+
+      document.getElementById("piEtiquetas").innerHTML =
+        ETIQUETAS_CONTENIDO.map(t =>
+          marca(esc(t), `class="chk-etq" value="${esc(t)}" ${conocidas.indexOf(t) !== -1 ? "checked" : ""}`)
+        ).join("")
+        + marca("Varios", `id="piVariosChk" ${sueltas.length ? "checked" : ""}`);
+
+      const txtVarios = document.getElementById("piVariosTxt");
+      txtVarios.value = sueltas.join(", ");
+      txtVarios.style.display = sueltas.length ? "block" : "none";
+      document.getElementById("piVariosChk").onchange = e => {
+        txtVarios.style.display = e.target.checked ? "block" : "none";
+        if (!e.target.checked) txtVarios.value = "";
+      };
+
+      pintarActual("piContenidoActual", r.contenido);
+
+      document.getElementById("piFechaOdc").value = "";
+      pintarActual("piFechaOdcActual", fmtDate(r.fechaOdc));
+
       document.getElementById("piObs").value = r.obs || "";
 
       if (r.fechaPago) {
@@ -3418,6 +3640,12 @@
       const eta = document.getElementById("piEta").value;
       const contenedor = document.getElementById("piContenedor").value.trim();
       const buque = document.getElementById("piBuque").value.trim();
+      const etqs = [...document.querySelectorAll(".chk-etq:checked")].map(c => c.value);
+      const varios = document.getElementById("piVariosChk").checked
+        ? document.getElementById("piVariosTxt").value.trim() : "";
+      const contenido = etqs.concat(varios ? [varios] : []).join(", ");
+      const fechaOdc = document.getElementById("piFechaOdc").value;
+
       const agSel = document.getElementById("piAgenteSel").value;
       const agOtro = document.getElementById("piAgenteOtro").value.trim();
       const agente = agSel === "Otro" ? agOtro : agSel;
@@ -3434,6 +3662,8 @@
       if (contenedor) payload.contenedor = contenedor;
       if (agente) payload.agente = agente;
       if (buque) payload.buque = buque;
+      if (contenido) payload.contenido = contenido;
+      if (fechaOdc) payload.fechaOdc = fechaOdc;
 
       const fileInput = document.getElementById("piComprobante");
       const file = fileInput.files[0];
