@@ -99,56 +99,6 @@ columnas cada cierto tiempo.
 
 Todo lo demás de la lista protegida sigue intocable.
 
-## Excepción autorizada · 2026-09-23 · Buque
-
-El agente aduanal ocupa una columna de la tabla, pero en el día a día lo que se
-mira para saber dónde va una carga es el buque. El agente no se va a ninguna
-parte: sigue en la hoja, en el panel desplegado, en el modal y en su propio
-filtro. Lo único que cambia es quién ocupa esa columna de la tabla.
-
-Se autoriza, y solo para esto:
-
-- `renderTable`: sustituir el contenido de la ÚLTIMA celda de la fila, hoy
-  `${esc(r.agente) || "—"}`, por el buque. Una línea. No se tocan `data-i`,
-  `tr.onclick`, el `colspan` ni ninguna otra celda.
-- `filters`: añadir una entrada `buque` al objeto que devuelve.
-- `applyFilters`: añadir una línea que descarte las filas que no coincidan, con
-  la misma forma que las tres que ya están, y añadir `r.buque` a la lista de
-  campos donde busca el cuadro de texto.
-- `refreshOptions`: añadir una llamada más a `fillSelect`, para el desplegable
-  nuevo.
-
-Leer la columna en `normalize` y mostrar el campo en `detailHTML` no necesitan
-excepción: los cubre el permiso permanente de más arriba.
-
-Sigue prohibido tocar el resto de esas cuatro funciones, `normalize` más allá
-de leer la columna nueva, `renderKPIs`, `renderPipe`, `renderCharts`, y el resto
-de la lista protegida.
-
-## Excepción autorizada · 2026-09-23 · fuera los filtros de agente y buque
-
-La barra de filtros se llenó. En el uso real solo se filtra por estado y por
-proveedor; los desplegables de agente aduanal y de buque ocupan sitio y no se
-usan. Se quitan los dos. No se pierde nada: el cuadro de búsqueda sigue
-encontrando por ambos campos, porque siguen en su lista de campos.
-
-Se autoriza, y solo para esto:
-
-- Eliminar del HTML los dos `<div class="fld">` de `fAgente` y `fBuque`.
-- `filters`: eliminar las entradas `agente` y `buque` del objeto que devuelve.
-- `applyFilters`: eliminar las dos líneas que descartan por esos campos. La
-  línea del buscador de texto NO se toca: `r.agente` y `r.buque` se quedan ahí.
-- `refreshOptions`: eliminar las dos llamadas a `fillSelect` de esos
-  desplegables.
-- Quitar `"fAgente"` y `"fBuque"` de los tres arrays de ids.
-
-Los campos siguen leyéndose en `normalize`, mostrándose en `detailHTML` y
-editándose desde el modal. Esto solo retira dos controles de la barra de
-filtros.
-
-Sigue prohibido tocar el resto de esas funciones, el filtro de estado, el de
-proveedor, el del pipeline, y el resto de la lista protegida.
-
 ## Excepción autorizada · 2026-09-25 · tabla nueva con Contenido y ETA
 
 La tabla muestra hoy el contenedor, que en el día a día no se mira, y no muestra
@@ -230,6 +180,37 @@ ocultarlos y el tablero se vería sin iniciar sesión.
 Sigue prohibido modificar el contenido de los bloques movidos, `renderCharts`,
 `renderKPIs`, `renderPipe`, `renderTable`, `applyFilters`, `filters`,
 `refreshOptions` y el resto de la lista protegida.
+
+## Excepción autorizada · 2026-09-25 · filtro de Contenido
+
+La tabla ya muestra el contenido de cada carga como etiquetas. Falta poder
+filtrar por ellas, que es la mitad de la utilidad de haberlas puesto.
+
+Se autoriza, y solo para esto:
+
+- El desplegable nuevo `fContenido` en la barra de filtros, y `"fContenido"` en
+  los tres arrays de ids que ya existen.
+- `filters`: añadir la entrada `contenido` al objeto que devuelve.
+- `applyFilters`: añadir una línea que descarte las filas que no coincidan.
+- `refreshOptions`: añadir una llamada a `fillSelect` para ese desplegable.
+
+Este filtro compara DISTINTO al resto, y es a propósito:
+
+- Los demás preguntan "¿es igual?". Este pregunta **"¿contiene alguna?"**: una
+  carga con `Drops, ADSS` tiene que salir al filtrar por Drops.
+- `refreshOptions` no vuelca los valores de celda: los rellena desde la
+  constante `ETIQUETAS_CONTENIDO`. Volcar las celdas daría dos problemas a la
+  vez: `Drops, ADSS` saldría como una opción propia, y las 49 cargas con texto
+  viejo escrito a mano meterían cincuenta frases largas en el desplegable.
+
+El texto viejo no se podrá filtrar desde ese desplegable, porque no es ninguna
+de las ocho. Para compensar se añade `r.contenido` al array del buscador de
+texto, que es donde se encuentran. Se podrá reetiquetar desde el modal cuando
+alguien quiera, sin migración masiva.
+
+Sigue prohibido tocar el resto de esas funciones, el filtro de estado, el de
+proveedor, el del pipeline, el buscador de texto, y el resto de la lista
+protegida.
 
 ## Historial
 

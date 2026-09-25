@@ -1059,8 +1059,9 @@
       <div class="filters">
         <div class="fld"><label>Estado</label><select id="fEstado" multiple size="4"></select></div>
         <div class="fld"><label>Proveedor</label><select id="fProv" multiple size="4"></select></div>
+        <div class="fld"><label>Contenido</label><select id="fContenido" multiple size="4"></select></div>
 
-        <div class="fld grow"><label>Buscar (proveedor, PI, invoice, BL, contenedor, buque)</label><input type="text"
+        <div class="fld grow"><label>Buscar (proveedor, PI, invoice, BL, contenedor, buque, contenido)</label><input type="text"
             id="fSearch" placeholder="Escribe para filtrar…" /></div>
         <span class="clear" id="clearFilters">Limpiar filtros</span>
         <div style="flex-basis:100%;font-size:12px;color:var(--muted);margin-top:2px">
@@ -1874,6 +1875,7 @@
       return {
         estado: elegidos("fEstado"),
         prov: elegidos("fProv"),
+        contenido: elegidos("fContenido"),
 
         q: document.getElementById("fSearch").value.trim().toLowerCase(),
       };
@@ -1886,10 +1888,17 @@
       return rows.filter(r => {
         if (f.estado.length && f.estado.indexOf(r.estado) === -1) return false;
         if (f.prov.length && f.prov.indexOf(r.prov) === -1) return false;
+        /* Este filtro compara "contiene alguna", no "es igual": la celda puede
+           llevar varias etiquetas, y una carga con `Drops, ADSS` tiene que
+           salir al filtrar por Drops. */
+        if (f.contenido.length) {
+          const suyas = String(r.contenido || "").split(",").map(s => s.trim());
+          if (!f.contenido.some(t => suyas.indexOf(t) !== -1)) return false;
+        }
 
         if (!ignorarPipe && PIPE_FILTER && r.stages[PIPE_FILTER].has) return false;
         if (f.q) {
-          const hay = [r.prov, r.cont, r.agente, r.buque, r.estadoRaw, r.id,
+          const hay = [r.prov, r.cont, r.agente, r.buque, r.contenido, r.estadoRaw, r.id,
           ...STAGES.map(s => r.stages[s.key].label)].join(" ").toLowerCase();
           if (!hay.includes(f.q)) return false;
         }
@@ -2628,6 +2637,10 @@
       [...selEst.options].forEach(o => { o.selected = elegidosEst.has(o.value); });
 
       fillSelect(document.getElementById("fProv"), new Set(ROWS.map(r => r.prov)));
+      /* Se rellena desde la constante, no desde los datos: volcar las celdas
+         metería `Drops, ADSS` como una opción propia y las decenas de textos
+         viejos escritos a mano harían el desplegable inservible. */
+      fillSelect(document.getElementById("fContenido"), ETIQUETAS_CONTENIDO);
 
     }
     function renderAlerts() {
@@ -2872,14 +2885,14 @@
     };
     document.getElementById("btnReload").onclick = loadLive;
 
-    ["fEstado", "fProv"].forEach(id => document.getElementById(id).onchange = () => { OPEN_ROW = null; renderAll(); });
+    ["fEstado", "fProv", "fContenido"].forEach(id => document.getElementById(id).onchange = () => { OPEN_ROW = null; renderAll(); });
     /* Selección múltiple con un clic simple, sin Cmd ni Ctrl.
        Por defecto el navegador sustituye la selección al hacer clic y
        obliga a mantener una tecla para acumular. Aquí se intercepta el
        mousedown para alternar cada opción por separado.
        El listener va sobre el <select>, no sobre las <option>: así
        sobrevive a que refreshOptions reconstruya la lista entera. */
-    ["fEstado", "fProv"].forEach(id => {
+    ["fEstado", "fProv", "fContenido"].forEach(id => {
       const sel = document.getElementById(id);
       if (!sel) return;
       sel.addEventListener("mousedown", e => {
@@ -2891,7 +2904,7 @@
     });
     document.getElementById("fSearch").oninput = () => { OPEN_ROW = null; renderTable(applyFilters(ROWS)); };
     document.getElementById("clearFilters").onclick = () => {
-      ["fEstado", "fProv"].forEach(id => {
+      ["fEstado", "fProv", "fContenido"].forEach(id => {
         [...document.getElementById(id).options].forEach(o => { o.selected = false; });
       });
       document.getElementById("fSearch").value = "";
