@@ -149,6 +149,44 @@ filtros.
 Sigue prohibido tocar el resto de esas funciones, el filtro de estado, el de
 proveedor, el del pipeline, y el resto de la lista protegida.
 
+## Excepción autorizada · 2026-09-25 · tabla nueva con Contenido y ETA
+
+La tabla muestra hoy el contenedor, que en el día a día no se mira, y no muestra
+ni qué trae la carga ni cuándo llega. Las dos cosas que más se consultan. Se
+reordena la fila entera para que las ocho columnas sean, de izquierda a derecha:
+
+    ID · Proveedor · PI No · Ruta documental · Buque · Contenido · ETA · Estado
+
+El contenedor no desaparece del dashboard: sigue en el panel desplegado y en el
+modal de editar, que es donde se escribe.
+
+Se autoriza, y solo para esto:
+
+- `renderTable`: reescribir las celdas `<td>` de la fila principal para que sean
+  esas ocho, en ese orden. Se pueden llamar a las funciones nuevas
+  `contenidoCelda` y `etaCelda`.
+- `renderTable`: cambiar los dos `colspan="7"` que tiene dentro por `"8"`.
+- Cambiar los `<th>` de la cabecera en el HTML y el `colspan="7"` de la fila de
+  "Cargando datos…".
+
+PROHIBIDO dentro de `renderTable`, aunque esté abierta: tocar el atributo
+`data-i="${r.i}"` del `<tr>`, el manejador `tr.onclick` que lee `+tr.dataset.i`,
+y la primera celda con su `<span class="flag">`. Esa llave numérica es la que
+despliega las filas; ya se explicó al cambiar el `#` por el ID y sigue igual de
+frágil.
+
+`contenidoCelda`, `etaCelda` y sus reglas CSS son CÓDIGO NUEVO y van fuera de
+cualquier función protegida.
+
+Reglas de la celda de ETA, para que no se reinventen: 3 días o menos punto rojo;
+de 4 a 10 punto ámbar; más de 10 sin punto; vencida solo la fecha; carga en
+estado Recibido solo la fecha en gris. Fecha en formato dd/mm/yyyy, como el
+resto del dashboard.
+
+Sigue prohibido tocar `normalize`, `renderKPIs`, `renderPipe`, `renderCharts`,
+`applyFilters`, `filters`, `refreshOptions`, `detailHTML`, `timelineHTML` y el
+resto de la lista protegida.
+
 ## Historial
 
 Las excepciones ya ejecutadas y en producción se movieron a

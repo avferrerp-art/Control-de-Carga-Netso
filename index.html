@@ -920,6 +920,57 @@
     #authPanel #googleBtn { display: flex; justify-content: center }
 
     #authPanel #authInfo { text-align: left }
+
+    /* Celda de ETA: cuenta atrás arriba, fecha debajo. El punto de color
+       sustituye al triángulo de aviso: mismo lenguaje que el semáforo de
+       la primera columna. */
+    td.eta { white-space: nowrap }
+
+    .eta-top {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600
+    }
+
+    .eta-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex: none
+    }
+
+    .eta-dot.rojo { background: var(--red) }
+    .eta-dot.ambar { background: var(--amber) }
+
+    .eta-fecha {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px
+    }
+
+    .eta-solo { color: var(--muted) }
+
+    /* Etiquetas de contenido. Las largas se recortan con puntos suspensivos
+       y el texto completo queda en el title. */
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px
+    }
+
+    .tag {
+      display: inline-block;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      background: var(--grey);
+      border-radius: 999px;
+      padding: 2px 9px;
+      font-size: 12px;
+      font-weight: 600
+    }
   </style>
 </head>
 
@@ -1057,14 +1108,15 @@
               <th>Proveedor</th>
               <th>PI No</th>
               <th>Ruta documental</th>
-              <th>Estado</th>
-              <th>Contenedor</th>
               <th>Buque</th>
+              <th>Contenido</th>
+              <th>ETA</th>
+              <th>Estado</th>
             </tr>
           </thead>
           <tbody id="tbody">
             <tr>
-              <td colspan="7" class="msg">Cargando datos…</td>
+              <td colspan="8" class="msg">Cargando datos…</td>
             </tr>
           </tbody>
         </table>
@@ -1609,6 +1661,8 @@
         cont: find(["Container ID", "Contenedor", "Container"]),
         agente: find(["Agente aduanal", "Agente Aduanal", "Agente"]),
         buque: find(["Buque"]),
+        contenido: find(["Contenido"]),
+        fechaOdc: find(["Fecha ODC"]),
         id: find(["ID"]),
         subtotal: find(["Subtotal"]),
         flete: find(["Flete"]),
@@ -1693,6 +1747,8 @@
           contUrl: getLink(col.cont),        // tracking de contenedor (searates) si está enlazado
           agente: get(r, col.agente),
           buque: get(r, col.buque),
+          contenido: get(r, col.contenido),
+          fechaOdc: pdate(get(r, col.fechaOdc)),
           id: get(r, col.id),   // identificador estable de la Fase 0
           stages,
           subtotal: get(r, col.subtotal),
@@ -2190,7 +2246,9 @@
     <div class="dgrid">
       ${kv("Estado", estCtrl)}
       ${kv("Proveedor", esc(r.prov))}
+      ${kv("Contenido", esc(r.contenido))}
       ${kv("Fecha PI/INV", fmtDate(r.fecha))}
+      ${kv("Fecha ODC", fmtDate(r.fechaOdc))}
       ${kv("ETD (zarpe)", fmtDate(r.stages.etd.date))}
       ${kv("ETA (arribo)", fmtDate(r.stages.eta.date))}
       ${kv("Contenedor", r.contUrl
@@ -2437,10 +2495,45 @@
       });
     }
 
+    /* Contenido de la celda de ETA. Reglas acordadas: 3 días o menos rojo,
+       de 4 a 10 ámbar, más de 10 sin punto, vencida solo la fecha, y si la
+       carga ya está Recibida solo la fecha en gris: avisar de algo que ya
+       llegó sería ruido. */
+    function etaCelda(r) {
+      const d = r.stages.eta.date;
+      if (!d) return "—";
+      const fecha = fmtDate(d);
+      if (r.estado === "recibido") return `<span class="eta-solo">${fecha}</span>`;
+
+      const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+      const dia = new Date(d); dia.setHours(0, 0, 0, 0);
+      const dias = Math.round((dia - hoy) / 86400000);
+      if (dias < 0) return `<span class="eta-solo">${fecha}</span>`;
+
+      const texto = dias === 0 ? "Hoy" : dias === 1 ? "Mañana" : "En " + dias + " días";
+      const punto = dias <= 3 ? `<span class="eta-dot rojo"></span>`
+                  : dias <= 10 ? `<span class="eta-dot ambar"></span>` : "";
+
+      return `<div class="eta-top">${punto}<span>${texto}</span></div>
+      <div class="eta-fecha">${fecha}</div>`;
+    }
+
+    /* Contenido de la celda de Contenido. La celda guarda las etiquetas
+       separadas por coma, así que se parten y se pintan como pastillas. El
+       texto viejo escrito a mano se pinta igual, recortado si es largo. */
+    function contenidoCelda(r) {
+      const txt = String(r.contenido || "").trim();
+      if (!txt) return "—";
+      const partes = txt.split(",").map(s => s.trim()).filter(Boolean);
+      return `<div class="tags">`
+        + partes.map(p => `<span class="tag" title="${esc(p)}">${esc(p)}</span>`).join("")
+        + `</div>`;
+    }
+
     function renderTable(rows) {
       document.getElementById("tCount").textContent = rows.length;
       const tb = document.getElementById("tbody");
-      if (!rows.length) { tb.innerHTML = `<tr><td colspan="7" class="msg">Sin cargas que coincidan con los filtros.</td></tr>`; return; }
+      if (!rows.length) { tb.innerHTML = `<tr><td colspan="8" class="msg">Sin cargas que coincidan con los filtros.</td></tr>`; return; }
       tb.innerHTML = rows.map(r => {
         const open = OPEN_ROW === r.i;
         const main = `<tr class="row" data-i="${r.i}">
@@ -2448,13 +2541,12 @@
       <td class="id">${esc(r.prov) || "—"}</td>
       <td>${esc(r.stages.pi.label) || "—"}</td>
       <td>${trackHTML(r)}</td>
-      <td>${stateTag(r)}</td>
-      <td>${r.contUrl
-            ? `<a href="${esc(r.contUrl)}" target="_blank" rel="noopener" title="Rastrear contenedor" onclick="event.stopPropagation()" style="color:var(--blue);font-weight:600;text-decoration:none">${esc(r.cont)} ↗</a>`
-            : (esc(r.cont) || "—")}</td>
       <td>${esc(r.buque) || "—"}</td>
+      <td>${contenidoCelda(r)}</td>
+      <td class="eta">${etaCelda(r)}</td>
+      <td>${stateTag(r)}</td>
     </tr>`;
-        const det = open ? `<tr class="detail"><td colspan="7">${detailHTML(r)}</td></tr>` : "";
+        const det = open ? `<tr class="detail"><td colspan="8">${detailHTML(r)}</td></tr>` : "";
         return main + det;
       }).join("");
       tb.querySelectorAll("tr.row").forEach(tr => {
