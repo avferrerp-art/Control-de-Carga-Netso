@@ -1006,6 +1006,7 @@
       <div class="actions">
         <button class="btn btn-ghost" id="btnNewCarga">+ Nueva carga</button>
         <button class="btn btn-primary" id="btnReload">Actualizar</button>
+        <button class="btn btn-ghost" id="btnLogout">Cerrar sesión</button>
       </div>
       <div class="brand">
         <div class="logo"><img class="netso-logo" src="netso-logo.png" alt="Netso" /></div>
@@ -1425,6 +1426,42 @@
       return Array.from(new Uint8Array(hash))
         .map(function (b) { return b.toString(16).padStart(2, "0"); })
         .join("");
+    }
+
+    /* Recordar la sesión en este navegador. Se guarda la huella (nunca el
+       correo) y la fecha de vencimiento. Al abrir la página se vuelve a
+       comprobar contra HUELLAS_AUTORIZADAS: si se quita a alguien de la
+       lista, pierde el acceso en su próxima recarga aunque tenga sesión
+       guardada. Igual que el portón, esto es disuasión, no seguridad. */
+    const SESION_CLAVE = "netso_sesion";
+    const SESION_DIAS = 7;
+
+    function guardarSesion(huella) {
+      try {
+        localStorage.setItem(SESION_CLAVE, JSON.stringify({
+          huella: huella,
+          vence: Date.now() + SESION_DIAS * 24 * 60 * 60 * 1000
+        }));
+      } catch (e) { /* modo incógnito o almacenamiento bloqueado: no pasa nada */ }
+    }
+
+    function sesionGuardadaValida() {
+      try {
+        var s = JSON.parse(localStorage.getItem(SESION_CLAVE) || "null");
+        if (s && s.vence > Date.now() && HUELLAS_AUTORIZADAS.indexOf(s.huella) !== -1) {
+          return true;
+        }
+        localStorage.removeItem(SESION_CLAVE);
+      } catch (e) { }
+      return false;
+    }
+
+    function cerrarSesion() {
+      try { localStorage.removeItem(SESION_CLAVE); } catch (e) { }
+      if (window.google && google.accounts && google.accounts.id) {
+        google.accounts.id.disableAutoSelect();
+      }
+      location.reload();
     }
 
     /* Lista blanca a propósito: solo estos dominios son producción.
@@ -2884,6 +2921,7 @@
       c.textContent = open ? "▸" : "▾";
     };
     document.getElementById("btnReload").onclick = loadLive;
+    document.getElementById("btnLogout").onclick = cerrarSesion;
 
     ["fEstado", "fProv", "fContenido"].forEach(id => document.getElementById(id).onchange = () => { OPEN_ROW = null; renderAll(); });
     /* Selección múltiple con un clic simple, sin Cmd ni Ctrl.
@@ -2975,6 +3013,7 @@
 
       if (HUELLAS_AUTORIZADAS.indexOf(huella) !== -1) {
         /* Correo autorizado: oculta el panel de acceso y arranca el tablero */
+        guardarSesion(huella);
         document.getElementById("authPanel").style.display = "none";
         el.style.display = "none";
         document.body.classList.remove("bloqueado");
@@ -3054,6 +3093,14 @@
     arrancarPrefetch();
 
     iniciarGoogleSignIn();
+
+    /* Si este navegador ya inició sesión hace menos de SESION_DIAS días,
+       se entra directo sin pedir Google otra vez. */
+    if (sesionGuardadaValida()) {
+      document.getElementById("authPanel").style.display = "none";
+      document.body.classList.remove("bloqueado");
+      pintarDesdePrefetch();
+    }
 
     /* ====== MODAL NUEVA CARGA ====== */
     function setNcAlert(msg, isError) {
