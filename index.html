@@ -972,6 +972,21 @@
       font-weight: 600
     }
 
+    /* Modalidad de la carga: Stock o Fiber Direct. Una sola pastilla por
+       carga, con color propio para distinguirlas de un vistazo. */
+    .mod {
+      display: inline-block;
+      white-space: nowrap;
+      border-radius: 999px;
+      padding: 2px 9px;
+      font-size: 12px;
+      font-weight: 700
+    }
+
+    .mod.stock { background: #e0e7ff; color: #3730a3 }
+
+    .mod.fd { background: #dcfce7; color: var(--green-d) }
+
     /* Pestañas */
     .tabs{display:flex;gap:4px;margin-top:18px;border-bottom:1px solid var(--line)}
     .tab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;padding:10px 16px;font-family:inherit;font-size:14.5px;font-weight:600;color:var(--muted);cursor:pointer}
@@ -1101,13 +1116,14 @@
               <th>Ruta documental</th>
               <th>Buque</th>
               <th>Contenido</th>
+              <th>Modalidad</th>
               <th>ETA</th>
               <th>Estado</th>
             </tr>
           </thead>
           <tbody id="tbody">
             <tr>
-              <td colspan="8" class="msg">Cargando datos…</td>
+              <td colspan="9" class="msg">Cargando datos…</td>
             </tr>
           </tbody>
         </table>
@@ -1254,6 +1270,12 @@
           <div id="piEtiquetas" style="display:flex;flex-wrap:wrap;gap:10px 16px;margin-bottom:10px"></div>
           <input type="text" id="piVariosTxt" placeholder="Describe el contenido" style="display:none" />
           <div id="piContenidoActual" style="font-size:12px;color:var(--muted);margin-top:6px;display:none;"></div>
+        </div>
+
+        <div class="fld" style="margin-bottom:16px">
+          <label for="piModalidad">Modalidad</label>
+          <select id="piModalidad"></select>
+          <div id="piModalidadActual" style="font-size:12px;color:var(--muted);margin-top:4px;display:none;"></div>
         </div>
 
         <div style="border-top:1px solid var(--line);margin:22px 0 14px"></div>
@@ -1577,6 +1599,11 @@
     /* Las ocho etiquetas de contenido van escritas aquí a propósito: así nadie
        puede inventarse una desde el dashboard. "Varios" no está en la lista
        porque no es una etiqueta, es la puerta al texto libre. */
+    /* Las dos modalidades posibles de una carga. Van escritas aquí, igual que
+       las etiquetas de contenido, para que la hoja no acabe con variantes
+       como "stock", "FD" o "Fiber direct". */
+    const MODALIDADES = ["Stock", "Fiber Direct"];
+
     const ETIQUETAS_CONTENIDO = [
       "Accesorios", "Equipos Activos", "Drops", "ASU", "ADSS",
       "Fibras Ópticas (varias)", "Uso interno", "POP",
@@ -1756,6 +1783,7 @@
         buque: find(["Buque"]),
         contenido: find(["Contenido"]),
         fechaOdc: find(["Fecha ODC"]),
+        modalidad: find(["Modalidad"]),
         id: find(["ID"]),
         subtotal: find(["Subtotal"]),
         flete: find(["Flete"]),
@@ -1842,6 +1870,7 @@
           buque: get(r, col.buque),
           contenido: get(r, col.contenido),
           fechaOdc: pdate(get(r, col.fechaOdc)),
+          modalidad: get(r, col.modalidad),
           id: get(r, col.id),   // identificador estable de la Fase 0
           stages,
           subtotal: get(r, col.subtotal),
@@ -2348,6 +2377,7 @@
       ${kv("Estado", estCtrl)}
       ${kv("Proveedor", esc(r.prov))}
       ${kv("Contenido", esc(r.contenido))}
+      ${kv("Modalidad", esc(r.modalidad))}
       ${kv("Fecha PI/INV", fmtDate(r.fecha))}
       ${kv("Fecha ODC", fmtDate(r.fechaOdc))}
       ${kv("ETD (zarpe)", fmtDate(r.stages.etd.date))}
@@ -2631,10 +2661,20 @@
         + `</div>`;
     }
 
+    /* Celda de Modalidad. Si la hoja trae otro texto, se pinta tal cual en
+       gris para que se vea y se pueda corregir desde el modal. */
+    function modalidadCelda(r) {
+      const v = String(r.modalidad || "").trim();
+      if (!v) return "—";
+      const cls = v === "Stock" ? "stock" : v === "Fiber Direct" ? "fd" : "";
+      return cls ? `<span class="mod ${cls}">${esc(v)}</span>`
+                 : `<span class="tag" title="${esc(v)}">${esc(v)}</span>`;
+    }
+
     function renderTable(rows) {
       document.getElementById("tCount").textContent = rows.length;
       const tb = document.getElementById("tbody");
-      if (!rows.length) { tb.innerHTML = `<tr><td colspan="8" class="msg">Sin cargas que coincidan con los filtros.</td></tr>`; return; }
+      if (!rows.length) { tb.innerHTML = `<tr><td colspan="9" class="msg">Sin cargas que coincidan con los filtros.</td></tr>`; return; }
       tb.innerHTML = rows.map(r => {
         const open = OPEN_ROW === r.i;
         const main = `<tr class="row" data-i="${r.i}">
@@ -2644,10 +2684,11 @@
       <td>${trackHTML(r)}</td>
       <td>${esc(r.buque) || "—"}</td>
       <td>${contenidoCelda(r)}</td>
+      <td>${modalidadCelda(r)}</td>
       <td class="eta">${etaCelda(r)}</td>
       <td>${stateTag(r)}</td>
     </tr>`;
-        const det = open ? `<tr class="detail"><td colspan="8">${detailHTML(r)}</td></tr>` : "";
+        const det = open ? `<tr class="detail"><td colspan="9">${detailHTML(r)}</td></tr>` : "";
         return main + det;
       }).join("");
       tb.querySelectorAll("tr.row").forEach(tr => {
@@ -3398,6 +3439,12 @@
 
       pintarActual("piContenidoActual", r.contenido);
 
+      const selMod = document.getElementById("piModalidad");
+      selMod.innerHTML = `<option value="">— sin cambiar —</option>`
+        + MODALIDADES.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join("");
+      selMod.value = "";
+      pintarActual("piModalidadActual", r.modalidad);
+
       document.getElementById("piFechaOdc").value = "";
       pintarActual("piFechaOdcActual", fmtDate(r.fechaOdc));
 
@@ -3692,6 +3739,7 @@
         ? document.getElementById("piVariosTxt").value.trim() : "";
       const contenido = etqs.concat(varios ? [varios] : []).join(", ");
       const fechaOdc = document.getElementById("piFechaOdc").value;
+      const modalidad = document.getElementById("piModalidad").value;
 
       const agSel = document.getElementById("piAgenteSel").value;
       const agOtro = document.getElementById("piAgenteOtro").value.trim();
@@ -3711,6 +3759,7 @@
       if (buque) payload.buque = buque;
       if (contenido) payload.contenido = contenido;
       if (fechaOdc) payload.fechaOdc = fechaOdc;
+      if (modalidad) payload.modalidad = modalidad;
 
       const fileInput = document.getElementById("piComprobante");
       const file = fileInput.files[0];

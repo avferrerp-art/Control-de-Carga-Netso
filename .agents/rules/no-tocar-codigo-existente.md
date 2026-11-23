@@ -222,3 +222,29 @@ autorizan nada.
 Cualquier modificación a la lista de funciones y constantes protegidas que no
 esté autorizada arriba sigue prohibida. Si una tarea parece exigirla,
 detente y pregunta antes de escribir una sola línea.
+
+## Excepción autorizada · 2026-11-23 · columna Modalidad (Stock / Fiber Direct)
+
+Cada carga es de Stock o de Fiber Direct, y hoy eso no se ve en ningún sitio. Se
+añade la columna `Modalidad`, con solo esos dos valores, escritos en la
+constante nueva `MODALIDADES`.
+
+La tabla pasa a nueve columnas:
+
+    ID · Proveedor · PI No · Ruta documental · Buque · Contenido · Modalidad · ETA · Estado
+
+Se autoriza, y solo para esto:
+
+- `renderTable`: añadir la celda `<td>${modalidadCelda(r)}</td>` después de la
+  de Contenido, y cambiar los dos `colspan="8"` que tiene dentro por `"9"`.
+- Añadir el `<th>Modalidad</th>` en la cabecera y cambiar el `colspan="8"` de la
+  fila de "Cargando datos…" por `"9"`.
+
+`normalize` y `detailHTML` entran en el permiso permanente de columnas nuevas.
+`modalidadCelda`, `MODALIDADES`, la clase CSS `.mod` y el selector
+`piModalidad` del modal son CÓDIGO NUEVO.
+
+Sigue PROHIBIDO dentro de `renderTable` tocar `data-i="${r.i}"`, el manejador
+`tr.onclick` y la primera celda con su `<span class="flag">`. Sigue prohibido
+tocar `applyFilters`, `filters`, `refreshOptions` y el resto de la lista
+protegida: por ahora no hay filtro de Modalidad.
